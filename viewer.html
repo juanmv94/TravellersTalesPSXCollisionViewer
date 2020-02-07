@@ -1,0 +1,275 @@
+<html>
+	<head>
+		<title>Travellers Tales PSX collision viewer by @Juanmv94</title>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<script src="three.min.js"></script>
+		<script src="FlyControls.js"></script>
+		<script>
+			var games = {
+				"ts2": {"areasize": 0x34, "iniarea": psxetopos(0xb54bb0)},
+				"ts2demo": {"areasize": 0x30, "iniarea": psxetopos(0xb43b80)},
+				"bugs": {"areasize": 0x30, "iniarea": psxetopos(0xb334e8)}
+			};
+			var urlvars = {};
+			var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+				urlvars[key] = value;
+			});
+		
+			var mult=0.05;
+			
+			var arrayBuffer,array16;
+			var oReq = new XMLHttpRequest();
+			oReq.open("GET", "SSTATES/"+urlvars["file"], true);
+			oReq.responseType = "arraybuffer";
+			oReq.onload = function (oEvent) {
+			  arrayBuffer = oReq.response; // Note: not oReq.responseText
+			  if (arrayBuffer) {
+				array16 = new Int16Array(arrayBuffer.slice(2));
+				array32 = new Int32Array(arrayBuffer.slice(2));
+				array32u = new Uint32Array(arrayBuffer.slice(2));
+				loaded();
+			  }
+			};
+			oReq.send(null);
+			
+			function postopsxe(pos) {
+				return (pos+11056360).toString(16);
+			}
+			
+			function psxetopos(psxe) {
+				return psxe-11056360;
+			}
+			
+			function postoadd(add) {
+				return (add+2147483208).toString(16);
+			}
+			
+			function addtopos(add) {
+				return add-2147483208;
+			}
+			
+			
+			
+			function loadts(pos,depthlimit) {
+				if (depthlimit<=0) return [];
+				var enabled=array16[pos++];
+				if (enabled<0) return [];
+				var count=array16[pos++];
+				//console.log("count:"+count);
+				var unk=[array16[pos],array16[pos+1],array16[pos+2],array16[pos+3]];
+				pos+=4;
+				var res=new Array(count);
+				for (var i=0;i<count;i++) {
+					res[i]=loadt(pos);
+					pos+=22;
+				}
+				return res.concat(loadts(pos,depthlimit-1));
+			}
+			
+			function loadt(pos) {
+				return {areaActiva:[array16[pos+0],array16[pos+1],array16[pos+2],array16[pos+3]],
+						pOrigen:[array16[pos+4],array16[pos+5],array16[pos+6]],p2:[array16[pos+7],array16[pos+8],array16[pos+9]],p3:[array16[pos+10],array16[pos+11],array16[pos+12]],p4:[array16[pos+13],array16[pos+14],array16[pos+15]],inclinacion1:[array16[pos+16],array16[pos+18]], rebote1:array16[pos+17],inclinacion2:[array16[pos+19],array16[pos+21]], rebote2:array16[pos+20]};//-16384
+			}
+			
+			function dibujat(t,colores) {
+				var group = new THREE.Group();
+				group.info=t;
+				var color=(t.rebote1>=0) ? 0 : 1;
+				
+				var coords1= new Array(3);
+				coords1[0]=new Array(3);
+				coords1[0][0]=t.pOrigen[0]*mult;
+				coords1[0][1]=-t.pOrigen[1]*mult;
+				coords1[0][2]=-t.pOrigen[2]*mult;
+				coords1[1]= new Array(3);
+				coords1[1][0]=(t.pOrigen[0]+t.p2[0])*mult;
+				coords1[1][1]=-(t.pOrigen[1]+t.p2[1])*mult;
+				coords1[1][2]=-(t.pOrigen[2]+t.p2[2])*mult;
+				coords1[2]= new Array(3);
+				coords1[2][0]=(t.pOrigen[0]+t.p3[0])*mult;
+				coords1[2][1]=-(t.pOrigen[1]+t.p3[1])*mult;
+				coords1[2][2]=-(t.pOrigen[2]+t.p3[2])*mult;
+				if (t.rebote2==32767) {
+					group.add(triangulo(coords1,colores[color],false));
+					return group;
+				}
+				group.add(triangulo(coords1,colores[color],true));
+				var coords2= new Array(3);
+				coords2[0]=new Array(3);
+				coords2[0][0]=(t.pOrigen[0]+t.p4[0])*mult;
+				coords2[0][1]=-(t.pOrigen[1]+t.p4[1])*mult;
+				coords2[0][2]=-(t.pOrigen[2]+t.p4[2])*mult;
+				coords2[2]= new Array(3);
+				coords2[2][0]=(t.pOrigen[0]+t.p2[0])*mult;
+				coords2[2][1]=-(t.pOrigen[1]+t.p2[1])*mult;
+				coords2[2][2]=-(t.pOrigen[2]+t.p2[2])*mult;
+				coords2[1]= new Array(3);
+				coords2[1][0]=(t.pOrigen[0]+t.p3[0])*mult;
+				coords2[1][1]=-(t.pOrigen[1]+t.p3[1])*mult;
+				coords2[1][2]=-(t.pOrigen[2]+t.p3[2])*mult;
+				group.add(triangulo(coords2,colores[color],true));
+				return group;
+			}
+			
+			function dibujats(ts,colores) {
+				var group = new THREE.Group();
+				for (var i=0;i<ts.length;i++) {
+					group.add(dibujat(ts[i],colores));
+				}
+				return group;
+			}
+			
+			function dibujaarea(pos32) {
+				var tipo=(array32u[pos32+11]/(256*256))&255;
+				var colores;
+				switch (tipo) {
+					case 0: colores=[0x77ff77,0x007700];break;	//Toxico verde
+					case 1: colores=[0xaa00ff,0x7700aa];break;	//Toxico 2
+					case 2: colores=[0xff00aa,0xaa0077];break;	//Toxico 3
+					case 3: colores=[0x7777ff,0x0000aa];break;	//Mojado
+					case 4: colores=[0x2222aa,0x000066];break;	//Mojado sucio
+					case 5: colores=[0x77ffff,0x007777];break;	//Deslizante 1
+					case 6: colores=[0x77ff77,0x007700];break;	//Deslizante 2
+					default: colores=[0xffffff,0xb0b0b0];		//normal
+				}
+				var group=dibujats(loadts(addtopos(array32u[pos32+4])/2,32),colores);
+				group.position.x=array32[pos32]*mult/32;
+				group.position.y=-array32[pos32+1]*mult/32;
+				group.position.z=-array32[pos32+2]*mult/32;
+				group.pointer=pos32*4;
+				return group;
+			}
+			
+			function triangulo(coords, color, gray) {
+				var group = new THREE.Group();
+				var geom = new THREE.Geometry();
+				var v1 = new THREE.Vector3(coords[0][0], coords[0][1], coords[0][2]);
+				var v2 = new THREE.Vector3(coords[1][0], coords[1][1], coords[1][2]);
+				var v3 = new THREE.Vector3(coords[2][0], coords[2][1], coords[2][2]);
+				var triangle = new THREE.Triangle(v1, v3, v2);
+				var normal = triangle.normal();
+				geom.vertices.push(triangle.c);
+				geom.vertices.push(triangle.a);
+				geom.vertices.push(triangle.b);
+				if (gray) {
+					var glgeom = new THREE.Geometry();
+					glgeom.vertices.push(triangle.b);
+					glgeom.vertices.push(triangle.c);
+					var gline = new THREE.Line(
+					  glgeom,
+					  new THREE.LineBasicMaterial({ color: 0x777777})
+					);
+					group.add(gline);
+				} else {
+					geom.vertices.push(triangle.c);
+				}
+				geom.faces.push(new THREE.Face3(0, 1, 2, normal));
+				var mesh = new THREE.Mesh(geom, new THREE.MeshPhongMaterial( { color:color, flatShading: true}));//new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color: 0xbbbbbb}));
+				var line = new THREE.Line(
+				  geom,
+				  new THREE.LineBasicMaterial({ color: 0x000000})
+				);
+				group.add(line);
+				group.add(mesh);
+				return group;
+			}
+
+			var scene = new THREE.Scene();
+			scene.background = new THREE.Color(0x7777ff);
+			var camera = new THREE.PerspectiveCamera( 50, window.innerWidth/window.innerHeight, 0.1, 10000 );
+			
+			var light = new THREE.HemisphereLight( 0xfefefe, 0xd0d0d0, 0.95 );
+			light.position.set( 0.5, 0.5, 0.5 );
+			scene.add( light );
+
+			var renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+			
+			function setWireframe(obj, wireframe) {
+				if (obj instanceof THREE.Mesh) {
+					  obj.visible = !wireframe;
+					  return;
+				}
+			  obj.children.forEach(child => {
+				setWireframe(child, wireframe);
+			  });
+			}
+			
+			function onDocumentMouseDown( event ) 
+			{
+				if (event.button!=0) {
+					setWireframe(area,false);
+					return;
+				}
+				var raycaster = new THREE.Raycaster(),
+				mouse = new THREE.Vector2(),
+				intersects;
+				mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+				mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+				raycaster.setFromCamera(mouse, camera);
+				intersects = raycaster.intersectObjects(area.children, true);
+				if (intersects.length > 0){
+					var obj=intersects[0].object.parent.parent.parent
+					if (obj==selectedObj) {
+					 setWireframe(area,false);
+					 selectedObj=null;
+					} else {
+						setWireframe(area,true);
+						setWireframe(obj,false);
+						selectedObj=obj;
+						console.log("Selected object at: 0x"+postoadd(obj.pointer)+", emu: 0x"+postopsxe(obj.pointer));
+						//poly=intersects[0].object.parent.parent;
+						//console.log("Clicked polygon information:");
+						//console.log(poly.info);
+					}
+					
+				} else {
+					setWireframe(area,false);
+					selectedObj=null;
+				}
+			}
+			
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+			
+			var area=new THREE.Group();
+			var selectedObj=null;
+			function loaded() {
+				var inipos=games[urlvars["game"]].iniarea;
+				while (array32u[inipos/4+4]!=0) {
+					area.add(dibujaarea(inipos/4));
+					inipos+=games[urlvars["game"]].areasize;
+				}
+				scene.add(area);
+				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				camera.rotation.x = Math.PI;
+				camera.rotation.z = Math.PI;
+				camera.rotation.y = -Math.PI/4;
+
+				var controls = new THREE.FlyControls( camera, renderer.domElement );
+				var t=performance.now();
+				var animate = function () {
+					requestAnimationFrame( animate );
+					var newt=performance.now();
+					controls.update((newt-t)*0.25);
+					t=newt;
+					renderer.render( scene, camera );
+				};
+
+				animate();
+			}
+		</script>
+	</body>
+</html>
