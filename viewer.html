@@ -11,16 +11,17 @@
 		<script src="FlyControls.js"></script>
 		<script>
 			var games = {
-				"ts2": {"areasize": 0x34, "polysize":22, "loadpoly":loadpolyts2, "iniarea": psxetopos(0xb54bb0)},
-				"ts2demo": {"areasize": 0x30, "polysize":22, "loadpoly":loadpolyts2, "iniarea": psxetopos(0xb43b80)},
-				"bugs": {"areasize": 0x30, "polysize":16, "loadpoly":loadpolybugs, "iniarea": psxetopos(0xb334e8)}
+				"ts2": {"areasize": 0x34, "polysize":22, "loadobjects":loadobjects, "loadpoly":loadpolyts2, "iniarea": psxetopos(0xb54bb0), "mult":0.05},
+				"ts2demo": {"areasize": 0x30, "polysize":22, "loadobjects":loadobjects, "loadpoly":loadpolyts2, "iniarea": psxetopos(0xb43b80), "mult":0.05},
+				"bugs": {"areasize": 0x30, "polysize":16, "loadobjects":loadobjects, "loadpoly":loadpolybugs, "iniarea": psxetopos(0xb334e8), "mult":0.075},
+				"rascal": {"areasize": 0xC4, "polysize":44, "loadobjects":loadobjectsrascal, "loadpoly":loadpolyrascal, "iniarea": psxetopos(0xb4cd7c), "mult":0.005}
 			};
 			var urlvars = {};
 			var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
 				urlvars[key] = value;
 			});
 		
-			var mult=0.05;
+			var mult=games[urlvars["game"]].mult;
 			
 			var arrayBuffer,array16;
 			var oReq = new XMLHttpRequest();
@@ -55,10 +56,9 @@
 			
 			
 			
-			function loadpolylist(pos,depthlimit) {
-				if (depthlimit<=0) return [];
+			function loadpolylist(pos) {
 				var enabled=array16[pos++];
-				if (enabled<0) return [];
+				if (enabled!=1) return [];
 				var count=array16[pos++];
 				//console.log("count:"+count);
 				var unk=[array16[pos],array16[pos+1],array16[pos+2],array16[pos+3]];
@@ -68,7 +68,21 @@
 					res[i]=games[urlvars["game"]].loadpoly(pos);
 					pos+=games[urlvars["game"]].polysize;
 				}
-				return res.concat(loadpolylist(pos,depthlimit-1));
+				return res.concat(loadpolylist(pos));
+			}
+			
+			function loadpolylistrascal(pos) {
+				var enabled=array16[pos++];
+				if (enabled!=1) return [];
+				var count=array16[pos++];
+				if (count<0 || count>256) return [];
+				//console.log("count:"+count);
+				var res=new Array(count);
+				for (var i=0;i<count;i++) {
+					res[i]=games[urlvars["game"]].loadpoly(pos);
+					pos+=games[urlvars["game"]].polysize;
+				}
+				return res;
 			}
 			
 			function loadpolyts2(pos) {
@@ -80,6 +94,11 @@
 				bouncing1:0	//bouncing doesn't exist in bugs life. 0 -> first triangle has wall color.
 				,bouncing2:32767	//bouncing doesn't exist in bugs life, and polygons are single triangles. Set 0x7FFF -> second triangle doesn't exist.
 				};
+			}
+			
+			function loadpolyrascal(pos) {
+				pos=pos/2;
+				return {pOrigin:[array32[pos+0],array32[pos+1],array32[pos+2]],p2:[array32[pos+3],array32[pos+4],array32[pos+5]],p3:[array32[pos+6],array32[pos+7],array32[pos+8]]};
 			}
 			
 			function drawpoly(t,colors) {
@@ -122,11 +141,24 @@
 				return group;
 			}
 			
-			function drawpolys(ts,colors) {
+			function drawpolyrascal(t,color) {
 				var group = new THREE.Group();
-				for (var i=0;i<ts.length;i++) {
-					group.add(drawpoly(ts[i],colors));
-				}
+				group.info=t;
+				
+				var coords= new Array(3);
+				coords[0]=new Array(3);
+				coords[0][0]=t.pOrigin[0]*mult;
+				coords[0][1]=-t.pOrigin[1]*mult;
+				coords[0][2]=-t.pOrigin[2]*mult;
+				coords[1]= new Array(3);
+				coords[1][0]=t.p2[0]*mult;
+				coords[1][1]=-t.p2[1]*mult;
+				coords[1][2]=-t.p2[2]*mult;
+				coords[2]= new Array(3);
+				coords[2][0]=t.p3[0]*mult;
+				coords[2][1]=-t.p3[1]*mult;
+				coords[2][2]=-t.p3[2]*mult;
+				group.add(drawtriangle(coords,color,false));
 				return group;
 			}
 			
@@ -143,10 +175,27 @@
 					case 6: colors=[0xffff77,0x777733];break;	//TS2: slippery 2
 					default: colors=[0xffffff,0xc0c0c0];		//TS2: normal
 				}
-				var group=drawpolys(loadpolylist(addtopos(array32u[pos32+4])/2,9999),colors);
+				var polylist=loadpolylist(addtopos(array32u[pos32+4])/2);
+				var group = new THREE.Group();
+				for (var i=0;i<polylist.length;i++) {
+					group.add(drawpoly(polylist[i],colors));
+				}
 				group.position.x=array32[pos32]*mult/32;
 				group.position.y=-array32[pos32+1]*mult/32;
 				group.position.z=-array32[pos32+2]*mult/32;
+				group.pointer=pos32*4;
+				return group;
+			}
+			
+			function drawobjectrascal(pos32) {
+				var polylist=loadpolylistrascal(addtopos(array32u[pos32])/2);
+				var group = new THREE.Group();
+				for (var i=0;i<polylist.length;i++) {
+					group.add(drawpolyrascal(polylist[i],0xFFFFFF));
+				}
+				group.position.x=array32[pos32+4]*32*mult;
+				group.position.y=-array32[pos32+5]*32*mult;
+				group.position.z=-array32[pos32+6]*32*mult;
 				group.pointer=pos32*4;
 				return group;
 			}
@@ -248,14 +297,29 @@
 				renderer.setSize( window.innerWidth, window.innerHeight );
 			}
 			
-			var area=new THREE.Group();
-			var selectedObj=null;
-			function loaded() {
-				var inipos=games[urlvars["game"]].iniarea;
+			function loadobjects(inipos) {
+				var area=new THREE.Group();
 				while (array32u[inipos/4+4]!=0) {
 					area.add(drawobject(inipos/4));
 					inipos+=games[urlvars["game"]].areasize;
 				}
+				return area;
+			}
+			
+			function loadobjectsrascal(inipos) {
+				var area=new THREE.Group();
+				while (array32u[inipos/4]>0) {
+					area.add(drawobjectrascal(inipos/4));
+					inipos+=games[urlvars["game"]].areasize;
+				}
+				return area;
+			}
+			
+			var selectedObj=null;
+			var area=null;
+			function loaded() {
+				var iniarea=games[urlvars["game"]].iniarea;
+				area=games[urlvars["game"]].loadobjects(iniarea);
 				scene.add(area);
 				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 				window.addEventListener( 'resize', onWindowResize, false );
