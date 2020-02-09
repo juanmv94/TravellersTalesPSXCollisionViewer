@@ -62,3 +62,10 @@ The engine sufered several changes, but Rascal, the first of the games, has the 
 - A lot of code of this tool was reused with Bugs and TS2 due to the similarity of the engines and collision data. Since Rascal engine is the most diferent, a lot of custom functions were made for this game. Rascal is also the worst of the games (yeah, Rascal is not really a classic unforgettable game), that's the reason I didn't expent so much time reversing the engine. As result, it doesn't show object categories, and maybe it could fail with some savestates.
 - There are minor engine diferences between the TS2 demo and TS2 final release, like the size of the object structure increased in 4 bytes.
 - If you look for example at the bed object from Rascal save room, you will see that it's ceiling is very low, and doesn't correspond to what you see ingame. WTF?? This is because Rascal collision uses a single coordinate point for the player.
+
+## FAQS
+- **Why do I see different category planes/objects , usually out of bounds in TS2 and Bugs Life that doesn't exist ingame?**
+These collision objects seems to have be used for testing during the development of the games, and left disabled in the collision data.  Aren't they beautiful?
+
+- **There are walls missing, as I see, I could go out of bounds. Fix it!**
+Collision shown in this viewer doesn't include dynamic object like enemies, and also doesn't include "limit walls". With "limit walls" I mean, walls that has X,Z coordinates, but has infinite height. Do you imagine seeing a wall going to the infinite space in this editor? It won't be very beautiful.
