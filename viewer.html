@@ -11,6 +11,7 @@
 		<script src="FlyControls.js"></script>
 		<script>
 			var games = {
+				"blsc": {"areasize": 0x34, "polysize":22, "loadobjects":loadobjects, "loadpoly":loadpolyts2, "iniarea": psxetopos(0xb69ec8), "mult":0.025},
 				"ts2": {"areasize": 0x34, "polysize":22, "loadobjects":loadobjects, "loadpoly":loadpolyts2, "iniarea": psxetopos(0xb54bb0), "mult":0.05},
 				"ts2demo": {"areasize": 0x30, "polysize":22, "loadobjects":loadobjects, "loadpoly":loadpolyts2, "iniarea": psxetopos(0xb43b80), "mult":0.05},
 				"bugs": {"areasize": 0x30, "polysize":16, "loadobjects":loadobjects, "loadpoly":loadpolybugs, "iniarea": psxetopos(0xb334e8), "mult":0.075},
@@ -166,14 +167,15 @@
 				var category=(array32u[pos32+11]/(256*256))&255;
 				var colors;
 				switch (category) {
-					case 0: colors=[0xccffcc,0x007700];break;	//TS2: green toxic, Bugs: normal
-					case 1: colors=[0xaa00ff,0x7700aa];break;	//TS2: toxic 2, Bugs: instant death
-					case 2: colors=[0xff00aa,0xaa0077];break;	//TS2: toxic 3, Bugs: level finish 1
-					case 3: colors=[0x7777ff,0x0000aa];break;	//TS2: wet, Bugs: level finish 2
-					case 4: colors=[0x2222aa,0x000066];break;	//TS2: dirty wet, Bugs: toxic
-					case 5: colors=[0xffffaa,0x777755];break;	//TS2: slippery 1
-					case 6: colors=[0xffff77,0x777733];break;	//TS2: slippery 2
-					default: colors=[0xffffff,0xc0c0c0];		//TS2: normal
+					case 0: colors=[0xccffcc,0x007700];break;	//TS2: green toxic, BLSC: toxic, Bugs: normal
+					case 1: colors=[0xaa00ff,0x7700aa];break;	//TS2: toxic 2, BLSC: toxic with high jump, Bugs: instant death
+					case 2: colors=[0xff00aa,0xaa0077];break;	//TS2: toxic 3, BLSC: toxic with waves, Bugs: level finish 1
+					case 3: colors=[0x7777ff,0x0000aa];break;	//TS2: wet, BLSC: ???, Bugs: level finish 2
+					case 4: colors=[0x2222aa,0x000066];break;	//TS2: dirty wet, BLSC: slippery wet, Bugs: toxic
+					case 5: colors=[0xffffaa,0x777755];break;	//TS2: slippery 1, BLSC: slippery 1
+					case 6: colors=[0xffff77,0x777733];break;	//TS2: slippery 2, BLSC: slippery 2
+					case 6: colors=[0xffff00,0x777700];break;	//BLSC: slippery 3
+					default: colors=[0xffffff,0xc0c0c0];		//TS2: normal,  BLSC: normal
 				}
 				var polylist=loadpolylist(addtopos(array32u[pos32+4])/2);
 				var group = new THREE.Group();
