@@ -1,0 +1,453 @@
+<html>
+	<head>
+		<title>Travellers Tales PSX gfx viewer by @Juanmv94</title>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<script src="three.min.js"></script>
+		<script src="FlyControls.js"></script>
+		<script>
+			var urlvars = {};
+			var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+				urlvars[key] = value;
+			});
+		
+			var mult=0.025;
+			
+			var arrayBuffer;
+			var oReq = new XMLHttpRequest();
+			oReq.open("GET", "SSTATES/"+urlvars["file"], true);
+			oReq.responseType = "arraybuffer";
+			oReq.onload = function (oEvent) {
+			  arrayBuffer = oReq.response; // Note: not oReq.responseText
+			  if (arrayBuffer) {
+			    array8u = new Uint8Array(arrayBuffer.slice(2));
+				array16 = new Int16Array(arrayBuffer.slice(2));
+				array16u = new Uint16Array(arrayBuffer.slice(2));
+				array32 = new Int32Array(arrayBuffer.slice(2));
+				array32u = new Uint32Array(arrayBuffer.slice(2));
+				vram = new Uint16Array(arrayBuffer.slice(2048*1254+991,2048*1254+991+(2048*256)));
+				loaded();
+			  }
+			};
+			oReq.send(null);
+			
+			function postopsxe(pos) {
+				return (pos+11056360).toString(16);
+			}
+			
+			function psxetopos(psxe) {
+				return psxe-11056360;
+			}
+			
+			function postoadd(add) {
+				return (add+2147483208).toString(16);
+			}
+			
+			function addtopos(add) {
+				return add-2147483208;
+			}
+			
+			var scene = new THREE.Scene();
+			scene.background = new THREE.Color(0x7777ff);
+			var camera = new THREE.PerspectiveCamera( 50, window.innerWidth/window.innerHeight, 0.1, 10000 );
+			
+			var light = new THREE.HemisphereLight( 0xffffff, 0xc0c0c0, 0.95 );
+			light.position.set( 0.5, 0.5, 0.5 );
+			scene.add( light );
+
+			var renderer = new THREE.WebGLRenderer({antialias: false});
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+			
+			function onDocumentMouseDown( event ) 
+			{
+				if (event.button!=0) {
+					
+				}
+				var raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2(), intersects;
+				mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+				mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+				raycaster.setFromCamera(mouse, camera);
+				intersects = raycaster.intersectObjects(scene.children, true);
+				if (intersects.length > 0){
+					var obj=intersects[0].object;
+					console.log(obj.parent.ba);
+					
+				} else {
+					
+				}
+			}
+			
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			function colorcurve(c) {		//RGB color intensity in PSX is not linear! in the range 0-31 the middle is about 8 (nopsx documentation)
+				return Math.sin(c/31*Math.PI/2)*255;
+			}
+			
+			function getBackgroundTexture() {	//Gets the background level texture (pal8 256color)
+				const pals=768+193*1024;
+				var palp=pals+1024*urlvars["bkgpal"];
+				const bkgp=832;
+				const x=192,y=128;
+				const multx=3,uy=144,dy=160;
+				
+				var p=new Array(256);
+				for (var i=0;i<256;i++) {
+					var color=vram[palp++];
+					p[i]=[colorcurve(color&31),colorcurve((color>>5)&31),colorcurve((color>>10)&31),255];
+				}
+				var imarray = new Uint8Array(x*(y+uy+dy)*4*multx*2);
+				var imarrp=0;
+				for (let i=0;i<y;i++)	//Each line
+				for (let my=0;my<=((i==0)?uy:(i==(y-1))?dy:0);my++) //repeat first and last line (uy,dy)
+				for (let mx=0;mx<multx;mx++) {		//Times x-repeating (normal+mirrored)			
+					var bkgpl=bkgp+1024*i
+					for (let j=0;j<(x/2);j++) {
+						var c1=vram[bkgpl]&255,c2=(vram[bkgpl]>>8)&255;
+						bkgpl++;
+						for (let i=0;i<4;i++) imarray[imarrp++]=p[c1][i];
+						for (let i=0;i<4;i++) imarray[imarrp++]=p[c2][i];
+					}
+					for (let j=0;j<(x/2);j++) {
+						bkgpl--;
+						var c1=vram[bkgpl]&255,c2=(vram[bkgpl]>>8)&255;
+						for (let i=0;i<4;i++) imarray[imarrp++]=p[c1][i];
+						for (let i=0;i<4;i++) imarray[imarrp++]=p[c2][i];
+					}
+				}
+				return new THREE.DataTexture( imarray, x*multx*2, y+uy+dy, THREE.RGBAFormat );
+			}
+			
+			function getPalTextures() {		//Gets the pal4 16color level textures
+				const pals16=768+193*1024;
+				var imarray = new Uint8Array(4096*256*4);
+				
+				var pals=new Array(64);
+				for (var n=0;n<64;n++) {
+					var palspage=new Array(16);
+					var palp=pals16+1024*n;
+					for (var j=0;j<16;j++) {
+						var pal=new Array(16);
+						for (var i=0;i<16;i++) {
+							var color=vram[palp++];
+							if (!color) pal[i]=[0,0,0,0];
+							else pal[i]=[colorcurve(color&31),colorcurve((color>>5)&31),colorcurve((color>>10)&31),255];
+						}
+						palspage[j]=pal;
+					}
+					pals[n]=(palspage);
+				}
+				
+				function getpal(x,y) {	//returns THE FIRST palette for each pal4 texture pixel
+					if (texpagemap[0].indexOf(Math.floor(x/64))>=0) {
+						if (x<256) {
+							if (y<32 && (x%64)<8) return pals[texpagemap[0].indexOf(Math.floor(x/64))][Math.floor(y/8)*4+Math.floor(x%64/2)];
+							if (y<64 && (x%64)<16) return pals[texpagemap[0].indexOf(Math.floor(x/64))][Math.floor(y/16)*4+Math.floor(x%64/4)];
+							if (y<128 && (x%64)<32) return pals[texpagemap[0].indexOf(Math.floor(x/64))][Math.floor(y/32)*4+Math.floor(x%64/8)];
+						}
+						return pals[texpagemap[0].indexOf(Math.floor(x/64))][Math.floor(y/64)*4+Math.floor(x%64/16)];
+					}
+					if (texpagemap[1].indexOf(Math.floor(x/64)-1-Math.max(...texpagemap[0]))>=0) {
+						return pals[62-texpagemap[1].indexOf(Math.floor(x/64)-1-Math.max(...texpagemap[0]))][Math.floor(y/64)*4+Math.floor(x%64/16)];
+					}
+					return pals[0][0];
+				}
+				
+				var imarrp=0;
+				for (var i=0;i<1024*256;i++) {
+					var c1=vram[i]&15,c2=(vram[i]>>4)&15,c3=(vram[i]>>8)&15,c4=(vram[i]>>12)&15;
+					var p=getpal(i%1024,Math.floor(i/1024));
+					for (let i=0;i<4;i++) imarray[imarrp++]=p[c1][i];
+					for (let i=0;i<4;i++) imarray[imarrp++]=p[c2][i];
+					for (let i=0;i<4;i++) imarray[imarrp++]=p[c3][i];
+					for (let i=0;i<4;i++) imarray[imarrp++]=p[c4][i];
+				}
+				return new THREE.DataTexture( imarray, 4096, 256, THREE.RGBAFormat );
+			}
+			
+			var texture,materialtex,materialtexst,
+			materialbasic=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors}),
+			materialbasicst=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
+			texpagemap=urlvars["texpagemap"].split(",").map(x=>[...x].map(x=>parseInt(x)));
+			
+			function getscenario(pos) {		//Returns the full level scenario
+				var group=new THREE.Group();
+				while (array8u[pos+7]==0x80) {
+					var cat=array16u[pos>>1];
+					console.log(postopsxe(addtopos(array32u[(pos+4)>>2]))+" "+(array32u[(pos+4)>>2]-array32u[(pos-28)>>2]));
+					console.log([...array8u.slice(pos,pos+32)].map(x=>x.toString(16)));
+					group.add(getscenarioel(addtopos(array32u[(pos+4)>>2])));
+					pos+=32;
+					console.log(postopsxe(pos));
+				}
+				return group;
+			}
+			
+			function getscenarioel(pos) {
+				var group = new THREE.Group();
+				var elsize=(array8u[pos+23]==0x80)?24:32;
+				if (elsize==32 && array8u[pos+elsize-1]!=0x80) {
+					console.log("wrong scenario element "+postopsxe(pos));
+					return new THREE.Group();
+				}
+				var gfxo=addgfxo(addtopos(array32u[pos+elsize-4>>2]));
+				if (gfxo==null) {
+					console.log("Error loading object "+postopsxe(addtopos(array32u[pos+elsize-4>>2]))+" at sceneobj "+postopsxe(pos));
+					return new THREE.Group();
+				}
+				gfxo.ba=postopsxe(pos)+"("+postopsxe(addtopos(array32u[pos+elsize-4>>2]))+") -> "+[...array8u.slice(pos,pos+elsize)].map(x=>x.toString(16)).join(' ');	//debug
+				gfxo.position.x=array16[pos>>1]*mult;
+				gfxo.position.y=array16[(pos+4)>>1]*mult;
+				gfxo.position.z=array16[(pos+8)>>1]*mult;
+				if (elsize==32) {
+					gfxo.rotation.x=array16u[(pos+12)>>1]/650;
+					gfxo.rotation.y=array16u[(pos+14)>>1]/650;
+					gfxo.rotation.z=array16u[(pos+16)>>1]/650;
+					if (array16u[(pos+18)>>1]|array16u[(pos+20)>>1]|array16u[(pos+22)>>1]) {
+						gfxo.scale.x=mult*array16u[(pos+18)>>1]/4096;
+						gfxo.scale.y=mult*array16u[(pos+20)>>1]/4096;
+						gfxo.scale.z=mult*array16u[(pos+22)>>1]/4096;
+					} else {
+						gfxo.scale.x=mult; gfxo.scale.y=mult; gfxo.scale.z=mult;
+						console.log("scenario element at "+postoadd(pos)+" is hidden");
+					}
+				} else {
+					gfxo.scale.x=mult; gfxo.scale.y=mult; gfxo.scale.z=mult;
+					gfxo.rotation.x+=array16u[(pos+12)>>1]/2048*Math.PI;
+					gfxo.rotation.y+=array16u[(pos+14)>>1]/2048*Math.PI;
+					gfxo.rotation.z+=array16u[(pos+16)>>1]/2048*Math.PI;
+				}
+				group.add(gfxo);
+				return group;
+			}
+			
+			function textpagedesp(textmap) {
+				if (textmap&0x10) {
+					var desp=texpagemap[1][textmap&15];
+					return 0.0625*urlvars["p2d"]+0.0625*desp;
+				} else {
+					var desp=((textmap&15) < texpagemap[0].length) ? texpagemap[0][textmap&15] : Math.max(...texpagemap[0])+1;
+					return 0.0625*desp;
+				}
+			}
+			
+			function addgfxo(pos) {
+				var npoints=array32u[pos>>2];
+				if (npoints>255) {
+					console.log("object points too long! 0x"+postoadd(pos));
+					return null;
+				}
+				pos+=4;
+				var points=new Array(npoints);
+				
+				function psxrgb(color) {	//returns the THREE color from a 16bit point color
+					return new THREE.Color(Math.sin(((color>>10)&31)/62*Math.PI),Math.sin(((color>>5)&31)/62*Math.PI),Math.sin((color&31)/62*Math.PI));
+				}
+				
+				for (let i=0; i<npoints; i++) {
+					var point={};
+					point.x=array16[pos>>1]; pos+=2;
+					point.y=array16[pos>>1]; pos+=2;
+					point.z=array16[pos>>1]; pos+=2;
+					point.color=psxrgb(array16[pos>>1]); pos+=2;
+					points[i]=point;
+				}
+				//console.log(points);
+				var facestex=[],facesuntex=[];
+				while (array16u[pos>>1]!=0xFFFF) {
+					var flags=array8u[pos++];
+					var textmap=array8u[pos++];
+					var n=array16u[pos>>1]; pos+=2;
+					if (n>4096) {
+						console.log("object faces too long! 0x"+postoadd(pos)+". "+(facestex.length+facesuntex.length)+" faces were read.");
+						return null;
+					}
+					if (flags&16) for (let i=0; i<n; i++) {	//untextured
+						var face={};
+						face.flags=flags;
+						face.textmap=textmap;
+						face.p1=array8u[pos++];
+						face.p2=array8u[pos++];
+						face.p3=array8u[pos++];
+						face.p4=array8u[pos++];
+						facesuntex.push(face);
+					} else for (let i=0; i<n; i++) { //textured
+						var face={};
+						face.flags=flags;
+						face.textmap=textmap;
+						face.p1=array8u[pos++];
+						face.p2=array8u[pos++];
+						face.p3=array8u[pos++];
+						face.p4=array8u[pos++];
+						face.p1x=array8u[pos++]; face.p1y=array8u[pos++];
+						face.p2x=array8u[pos++]; face.p2y=array8u[pos++];
+						face.p3x=array8u[pos++]; face.p3y=array8u[pos++];
+						face.p4x=array8u[pos++]; face.p4y=array8u[pos++];
+						facestex.push(face);
+					}
+					
+				}
+				//console.log(facestex); console.log(facesuntex);
+				var geometrytex = new THREE.Geometry(), geometryuntex = new THREE.Geometry(),geometrytexst = new THREE.Geometry(), geometryuntexst = new THREE.Geometry();
+				points.forEach(p=>{
+					var v=new THREE.Vector3(p.x,p.y,p.z);
+					geometrytex.vertices.push(v); geometryuntex.vertices.push(v);  geometrytexst.vertices.push(v); geometryuntexst.vertices.push(v);
+				});
+				facestex.forEach(f=>{
+					var geom=((f.flags&0x20) && (f.flags&0x40))?geometrytex:geometrytexst;	//TODO: dark transp + light transp
+					if (f.flags&0x01) {		//triangles
+						var face=new THREE.Face3(f.p1,f.p2,f.p3);
+						face.vertexColors[0] = points[f.p1].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p3].color;
+						geom.faces.push(face);
+						geom.faceVertexUvs[0].push([
+						  new THREE.Vector2(f.p2x/4096+textpagedesp(f.textmap), 1-f.p2y/256),
+						  new THREE.Vector2(f.p3x/4096+textpagedesp(f.textmap), 1-f.p3y/256),
+						  new THREE.Vector2(f.p4x/4096+textpagedesp(f.textmap), 1-f.p4y/256)
+						]);
+						if (f.flags&0x02 && (urlvars["ds"][0]!="y")) {	//doubleside
+							var face=new THREE.Face3(f.p3,f.p2,f.p1);
+							face.vertexColors[0] = points[f.p3].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p1].color;
+							geom.faces.push(face);
+							geom.faceVertexUvs[0].push([
+							  new THREE.Vector2(f.p4x/4096+textpagedesp(f.textmap), 1-f.p4y/256),
+							  new THREE.Vector2(f.p3x/4096+textpagedesp(f.textmap), 1-f.p3y/256),
+							  new THREE.Vector2(f.p2x/4096+textpagedesp(f.textmap), 1-f.p2y/256)
+							]);
+						}
+					}
+					else {		//quads
+						var face=new THREE.Face3(f.p4,f.p2,f.p3);
+						face.vertexColors[0] = points[f.p4].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p3].color;
+						geom.faces.push(face);
+						geom.faceVertexUvs[0].push([
+						  new THREE.Vector2(f.p4x/4096+textpagedesp(f.textmap), 1-f.p4y/256),
+						  new THREE.Vector2(f.p2x/4096+textpagedesp(f.textmap), 1-f.p2y/256),
+						  new THREE.Vector2(f.p3x/4096+textpagedesp(f.textmap), 1-f.p3y/256)
+						]);
+						face=new THREE.Face3(f.p4,f.p1,f.p2);
+						face.vertexColors[0] = points[f.p4].color; face.vertexColors[1] = points[f.p1].color; face.vertexColors[2] = points[f.p2].color;
+						geom.faces.push(face);
+						geom.faceVertexUvs[0].push([
+						  new THREE.Vector2(f.p4x/4096+textpagedesp(f.textmap), 1-f.p4y/256),
+						  new THREE.Vector2(f.p1x/4096+textpagedesp(f.textmap), 1-f.p1y/256),
+						  new THREE.Vector2(f.p2x/4096+textpagedesp(f.textmap), 1-f.p2y/256)
+						]);
+						if (f.flags&0x02 && (urlvars["ds"][0]!="y")) {	//doubleside
+							var face=new THREE.Face3(f.p3,f.p2,f.p4);
+							face.vertexColors[0] = points[f.p3].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p4].color;
+							geom.faces.push(face);
+							geom.faceVertexUvs[0].push([
+							  new THREE.Vector2(f.p3x/4096+textpagedesp(f.textmap), 1-f.p3y/256),
+							  new THREE.Vector2(f.p2x/4096+textpagedesp(f.textmap), 1-f.p2y/256),
+							  new THREE.Vector2(f.p4x/4096+textpagedesp(f.textmap), 1-f.p4y/256)
+							]);
+							face=new THREE.Face3(f.p2,f.p1,f.p4);
+							face.vertexColors[0] = points[f.p2].color; face.vertexColors[1] = points[f.p1].color; face.vertexColors[2] = points[f.p4].color;
+							geom.faces.push(face);
+							geom.faceVertexUvs[0].push([
+							  new THREE.Vector2(f.p2x/4096+textpagedesp(f.textmap), 1-f.p2y/256),
+							  new THREE.Vector2(f.p1x/4096+textpagedesp(f.textmap), 1-f.p1y/256),
+							  new THREE.Vector2(f.p4x/4096+textpagedesp(f.textmap), 1-f.p4y/256)
+							]);
+						}
+					}
+				});
+				facesuntex.forEach(f=>{
+					var geom=(f.flags&0x60)?geometryuntex:geometryuntexst;
+					var face=new THREE.Face3(f.p1,f.p2,f.p3);
+					face.vertexColors[0] = points[f.p1].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p3].color;
+					geom.faces.push(face);
+					if (!(f.flags&0x01)) {	//quads
+						face=new THREE.Face3(f.p1,f.p3,f.p4);
+						face.vertexColors[0] = points[f.p1].color; face.vertexColors[1] = points[f.p3].color; face.vertexColors[2] = points[f.p4].color;
+						geom.faces.push(face);
+					}
+					if (f.flags&0x02 && (urlvars["ds"][0]!="y")) {	//doubleside
+						var face=new THREE.Face3(f.p3,f.p2,f.p1);
+						face.vertexColors[0] = points[f.p3].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p1].color;
+						geom.faces.push(face);
+						if (!(f.flags&0x01)) {	//quads
+							face=new THREE.Face3(f.p4,f.p3,f.p1);
+							face.vertexColors[0] = points[f.p4].color; face.vertexColors[1] = points[f.p3].color; face.vertexColors[2] = points[f.p1].color;
+							geom.faces.push(face);
+						}
+					}
+				});
+				//geometrytex.computeFaceNormals();
+				//geometrytex.computeVertexNormals();
+				var group=new THREE.Group();
+				group.add(new THREE.Mesh( geometrytex, materialtex));
+				group.add(new THREE.Mesh( geometryuntex, materialbasic));
+				group.add(new THREE.Mesh( geometrytexst, materialtexst));
+				group.add(new THREE.Mesh( geometryuntexst, materialbasicst));
+				return group;
+			}
+			
+			function loaded() {
+				window.addEventListener( 'resize', onWindowResize, false );
+				texture = getPalTextures();
+				texture.flipY=true; texture.flipX=true;
+				//texture.magFilter=THREE.LinearFilter;
+				texture.needsUpdate=true;
+				materialtex=new THREE.MeshBasicMaterial({
+					side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
+					wireframe: false, transparent:true,
+					vertexColors: THREE.FaceColors
+				});
+				materialtexst=new THREE.MeshBasicMaterial({
+					side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
+					wireframe: false, transparent:true,
+					vertexColors: THREE.FaceColors, opacity: 0.5, depthWrite: false
+				});
+				
+				//scene.background=texture;		//Debug palette
+				
+				var bgMesh=null;
+				if (urlvars["bkgpal"]>=0) {
+					var bkgtex=getBackgroundTexture();
+					bkgtex.needsUpdate=true;
+					const shader = THREE.ShaderLib.equirect;
+					const material = new THREE.ShaderMaterial({
+						fragmentShader: shader.fragmentShader,
+						vertexShader: shader.vertexShader,
+						uniforms: shader.uniforms,
+						depthWrite: false,
+						side: THREE.BackSide,
+					 });
+					material.uniforms.tEquirect.value = bkgtex;
+					const plane = new THREE.BoxBufferGeometry(10000, 10000, 10000);
+					bgMesh = new THREE.Mesh(plane, material);
+					scene.add(bgMesh);
+				}
+				//scene.background=bkgtex;
+				
+				//var model=addgfxo(psxetopos(0x00B6AB84));
+				var model=getscenario(psxetopos(parseInt(urlvars["gfxpointer"])));
+				scene.add(model);
+				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+				camera.position.x=0; camera.position.y=-100; camera.position.z=0;
+				camera.rotation.x=0.5; camera.rotation.y=-1; camera.rotation.z=3.5;
+
+				var controls = new THREE.FlyControls( camera, renderer.domElement );
+				var t=performance.now();
+				var animate = function () {
+					requestAnimationFrame( animate );
+					var newt=performance.now();
+					controls.update(newt-t);
+					t=newt;
+					if (bgMesh) bgMesh.position.copy(camera.position);
+					renderer.render( scene, camera );
+				};
+				animate();
+			}
+		</script>
+	</body>
+</html>
