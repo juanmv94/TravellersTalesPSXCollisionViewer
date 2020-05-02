@@ -138,7 +138,7 @@
 						var pal=new Array(16);
 						for (var i=0;i<16;i++) {
 							var color=vram[palp++];
-							if (!color) pal[i]=[0,0,0,0];
+							if (!color) pal[i]=[0,0,0,10];
 							else pal[i]=[colorcurve(color&31),colorcurve((color>>5)&31),colorcurve((color>>10)&31),255];
 						}
 						palspage[j]=pal;
@@ -174,8 +174,9 @@
 			}
 			
 			var texture,materialtex,materialtexst,
-			materialbasic=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors}),
-			materialbasicst=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
+			materialbasic=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors}), materialbasicst=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
+			materialbasicsta=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
+			materialbasicsts=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false}),
 			texpagemap=urlvars["texpagemap"].split(",").map(x=>[...x].map(x=>parseInt(x)));
 			
 			function getscenario(pos) {		//Returns the full level scenario
@@ -193,26 +194,23 @@
 						continue;
 					}
 					gfxo.ba=postopsxe(pos)+"("+postopsxe(addtopos(array32u[pos+elsize-4>>2]))+") -> "+[...array8u.slice(pos,pos+elsize)].map(x=>x.toString(16)).join(' ');	//debug
-					gfxo.position.x=array16[pos>>1]*mult;
-					gfxo.position.y=array16[(pos+4)>>1]*mult;
-					gfxo.position.z=array16[(pos+8)>>1]*mult;
+					gfxo.position.x=array32[pos>>2]*mult;
+					gfxo.position.y=array32[(pos+4)>>2]*mult;
+					gfxo.position.z=array32[(pos+8)>>2]*mult;
+					gfxo.rotation.x+=array16[(pos+12)>>1]/2048*Math.PI;
+					gfxo.rotation.y+=array16[(pos+14)>>1]/2048*Math.PI;
+					gfxo.rotation.z+=array16[(pos+16)>>1]/2048*Math.PI;
 					if (elsize==32) {
-						gfxo.rotation.x=array16u[(pos+12)>>1]/650;
-						gfxo.rotation.y=array16u[(pos+14)>>1]/650;
-						gfxo.rotation.z=array16u[(pos+16)>>1]/650;
 						if (array16u[(pos+18)>>1]|array16u[(pos+20)>>1]|array16u[(pos+22)>>1]) {
-							gfxo.scale.x=mult*array16u[(pos+18)>>1]/4096;
-							gfxo.scale.y=mult*array16u[(pos+20)>>1]/4096;
-							gfxo.scale.z=mult*array16u[(pos+22)>>1]/4096;
+							gfxo.scale.x=mult*array16[(pos+18)>>1]/4096;
+							gfxo.scale.y=mult*array16[(pos+20)>>1]/4096;
+							gfxo.scale.z=mult*array16[(pos+22)>>1]/4096;
 						} else {
 							gfxo.scale.x=mult; gfxo.scale.y=mult; gfxo.scale.z=mult;
 							console.log("scenario element at "+postoadd(pos)+" is hidden");
 						}
 					} else {
 						gfxo.scale.x=mult; gfxo.scale.y=mult; gfxo.scale.z=mult;
-						gfxo.rotation.x+=array16u[(pos+12)>>1]/2048*Math.PI;
-						gfxo.rotation.y+=array16u[(pos+14)>>1]/2048*Math.PI;
-						gfxo.rotation.z+=array16u[(pos+16)>>1]/2048*Math.PI;
 					}
 					group.add(gfxo);
 					pos+=elsize;
@@ -226,13 +224,14 @@
 					var desp=texpagemap[1][textmap&15];
 					return 0.0625*urlvars["p2d"]+0.0625*desp;
 				} else {
-					var desp=((textmap&15) < texpagemap[0].length) ? texpagemap[0][textmap&15] : Math.max(...texpagemap[0])+1;
+					var desp=((textmap&15) < texpagemap[0].length) ? texpagemap[0][textmap&15] : (urlvars["p2d"]==6)?10:6;	//this last part could be better
 					return 0.0625*desp;
 				}
 			}
 			
 			function addgfxo(pos) {
-				var npoints=array32u[pos>>2];
+				var npoints=Math.abs(array32[pos>>2]);
+				var specialmat=(array32[pos>>2]<0);		//Maybe reflective? not implemented
 				if (npoints>255) {
 					console.log("object points too long! 0x"+postoadd(pos));
 					return null;
@@ -253,6 +252,7 @@
 					points[i]=point;
 				}
 				//console.log(points);
+				if (specialmat) pos+=(npoints+1)*4;	//special mat data skip
 				var facestex=[],facesuntex=[];
 				while (array16u[pos>>1]!=0xFFFF) {
 					var flags=array8u[pos++];
@@ -288,13 +288,13 @@
 					
 				}
 				//console.log(facestex); console.log(facesuntex);
-				var geometrytex = new THREE.Geometry(), geometryuntex = new THREE.Geometry(),geometrytexst = new THREE.Geometry(), geometryuntexst = new THREE.Geometry();
+				var geometrytex = new THREE.Geometry(), geometryuntex = new THREE.Geometry(), geometrytexst = new THREE.Geometry(), geometryuntexst = new THREE.Geometry(), geometrytexsta = new THREE.Geometry(), geometryuntexsta = new THREE.Geometry(), geometrytexsts = new THREE.Geometry(), geometryuntexsts = new THREE.Geometry();
 				points.forEach(p=>{
 					var v=new THREE.Vector3(p.x,p.y,p.z);
-					geometrytex.vertices.push(v); geometryuntex.vertices.push(v);  geometrytexst.vertices.push(v); geometryuntexst.vertices.push(v);
+					geometrytex.vertices.push(v); geometryuntex.vertices.push(v);  geometrytexst.vertices.push(v); geometryuntexst.vertices.push(v); geometrytexsta.vertices.push(v); geometryuntexsta.vertices.push(v); geometrytexsts.vertices.push(v); geometryuntexsts.vertices.push(v);
 				});
 				facestex.forEach(f=>{
-					var geom=((f.flags&0x20) && (f.flags&0x40))?geometrytex:geometrytexst;	//TODO: dark transp + light transp
+					var geom=(((f.flags&0x20)&&(f.flags&0x40))||specialmat)?geometrytex:(f.flags&0x40)?geometrytexsts:(f.flags&0x20)?geometrytexsta:geometrytexst;
 					if (f.flags&0x01) {		//triangles
 						var face=new THREE.Face3(f.p1,f.p2,f.p3);
 						face.vertexColors[0] = points[f.p1].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p3].color;
@@ -353,7 +353,7 @@
 					}
 				});
 				facesuntex.forEach(f=>{
-					var geom=(f.flags&0x60)?geometryuntex:geometryuntexst;
+					var geom=(((f.flags&0x20)&&(f.flags&0x40))||specialmat)?geometryuntex:(f.flags&0x40)?geometryuntexsts:(f.flags&0x20)?geometryuntexsta:geometryuntexst;
 					var face=new THREE.Face3(f.p1,f.p2,f.p3);
 					face.vertexColors[0] = points[f.p1].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p3].color;
 					geom.faces.push(face);
@@ -380,6 +380,10 @@
 				group.add(new THREE.Mesh( geometryuntex, materialbasic));
 				group.add(new THREE.Mesh( geometrytexst, materialtexst));
 				group.add(new THREE.Mesh( geometryuntexst, materialbasicst));
+				group.add(new THREE.Mesh( geometrytexsta, materialtexsta));
+				group.add(new THREE.Mesh( geometryuntexsta, materialbasicsta));
+				group.add(new THREE.Mesh( geometrytexsts, materialtexsts));
+				group.add(new THREE.Mesh( geometryuntexsts, materialbasicsts));
 				return group;
 			}
 			
@@ -398,6 +402,16 @@
 					side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
 					wireframe: false, transparent:true,
 					vertexColors: THREE.FaceColors, opacity: 0.5, depthWrite: false
+				});
+				materialtexsta=new THREE.MeshBasicMaterial({
+					side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
+					wireframe: false, transparent:true,
+					vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false
+				});
+				materialtexsts=new THREE.MeshBasicMaterial({
+					side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
+					wireframe: false, transparent:true,
+					vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, depthWrite: false
 				});
 				
 				//scene.background=texture;		//Debug palette
