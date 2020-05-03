@@ -118,7 +118,7 @@
 					}
 					for (let j=0;j<(x/2);j++) {
 						bkgpl--;
-						var c1=vram[bkgpl]&255,c2=(vram[bkgpl]>>8)&255;
+						var c2=vram[bkgpl]&255,c1=(vram[bkgpl]>>8)&255;
 						for (let i=0;i<4;i++) imarray[imarrp++]=p[c1][i];
 						for (let i=0;i<4;i++) imarray[imarrp++]=p[c2][i];
 					}
@@ -173,7 +173,7 @@
 				return new THREE.DataTexture( imarray, 4096, 256, THREE.RGBAFormat );
 			}
 			
-			var texture,materialtex,materialtexst,
+			var texture,materialtex,materialtexst,materialtexsta,materialtexsts
 			materialbasic=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors}), materialbasicst=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
 			materialbasicsta=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
 			materialbasicsts=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false}),
@@ -187,7 +187,7 @@
 						console.log("no more scenario elements from index "+i);
 						break;
 					}
-					var gfxo=addgfxo(addtopos(array32u[pos+elsize-4>>2]));
+					var gfxo=getgfxo(addtopos(array32u[pos+elsize-4>>2]));
 					if (gfxo==null) {
 						console.log("Error loading object "+postopsxe(addtopos(array32u[pos+elsize-4>>2]))+" at sceneobj "+postopsxe(pos));
 						pos+=elsize;
@@ -197,9 +197,9 @@
 					gfxo.position.x=array32[pos>>2]*mult;
 					gfxo.position.y=array32[(pos+4)>>2]*mult;
 					gfxo.position.z=array32[(pos+8)>>2]*mult;
-					gfxo.rotation.x+=array16[(pos+12)>>1]/2048*Math.PI;
-					gfxo.rotation.y+=array16[(pos+14)>>1]/2048*Math.PI;
-					gfxo.rotation.z+=array16[(pos+16)>>1]/2048*Math.PI;
+					gfxo.rotation.x=array16[(pos+12)>>1]/2048*Math.PI;
+					gfxo.rotation.y=array16[(pos+14)>>1]/2048*Math.PI;
+					gfxo.rotation.z=array16[(pos+16)>>1]/2048*Math.PI;
 					if (elsize==32) {
 						if (array16u[(pos+18)>>1]|array16u[(pos+20)>>1]|array16u[(pos+22)>>1]) {
 							gfxo.scale.x=mult*array16[(pos+18)>>1]/4096;
@@ -229,7 +229,7 @@
 				}
 			}
 			
-			function addgfxo(pos) {
+			function getgfxo(pos) {
 				var npoints=Math.abs(array32[pos>>2]);
 				var specialmat=(array32[pos>>2]<0);		//Maybe reflective? not implemented
 				if (npoints>255) {
@@ -435,7 +435,7 @@
 				}
 				//scene.background=bkgtex;
 				
-				//var model=addgfxo(psxetopos(0x00B6AB84));
+				//var model=getgfxo(psxetopos(0x00B6AB84));
 				var model=getscenario(psxetopos(parseInt(urlvars["gfxpointer"])));
 				scene.add(model);
 				document.addEventListener( 'mousedown', onDocumentMouseDown, false );

@@ -121,4 +121,12 @@ Scenario is made of an array of different size scenario items (24/32 bytes). The
 Both size scenario items start with 32bit xyz positions followed by 16bit xyz rotation, and ends with 32bit object pointer.
 32 bit scenario elements has 16bit xyz scale components following the rotation.
 
-Objects starts with a 32bit vertex count (that is negative for special material). The following vertex array elements are made of 16bit xyz positions and a 16bit vertex color. Following the vertex array, there's a faces flag, vram page and palette byte, and faces count. At the end of the faces array you can find another faces flag, vram page, and count, or just 0xFFFF meaning no more faces. There are lot of 1bit flags like translucency, doublesided, textured, quads,... the faces array items are made of a 4 item list of 8bit vertex index (only 3 used for triangles). For textured elements is followed by a list of 4 8bit xy positions of face vertex UVs.
+Objects starts with a 32bit vertex count (that is negative for special material). The following vertex array elements are made of 16bit xyz positions and a 16bit vertex color. Following the vertex array, there's a faces flag, palette & vram page byte, and faces count. At the end of the faces array you can find another faces flag, Palette & vram page, and count, or just 0xFFFF meaning no more faces. There are lot of 1bit flags like translucency, doublesided, textured, quads,... the faces array items are made of a 4 item list of 8bit vertex index (only 3 used for triangles). For textured elements is followed by a list of 4 8bit xy positions of face vertex UVs.
+
+#GFX viewer URL Parameters
+- **ds**: if set to **y**es, it forces all meshes to be double-sided, for better visibility of some levels. This is the only parameter you should play with.
+- **gfxpointer**: A pointer to the scene element array to be rendered (EPSXE emulator address).
+- **gfxcount**: number of scene elements to be rendered.
+- **bkgpal**: Background texture palette index. If set to negative number, it disables background texture and uses the default blue background.
+- **texpagemap**: *palette & vram page byte* at object data is a number that represents a palette index and a vram page mapped to that palette index. This parameter contains this vram page mapping. Palette indexes starts from beggining in ascending order, and then from end in descending order, so we use a comma to divide.
+- **p2d**: *palette & vram page byte* at object data has two categories: One for level textures starting at 0x00 and other for common scene elements starting at 0x10. This parameter tells at which palette & vram page this second category starts.
