@@ -87,11 +87,9 @@ These collision objects seems to have be used for testing during the development
 Collision shown in this viewer doesn't include dynamic object like enemies, and also doesn't include "limit walls". With "limit walls" I mean, walls that has X,Z coordinates, but has infinite height. Do you imagine seeing a wall going to the infinite space in this editor? It won't be very beautiful.
 
 # Travellers Tales PSX GFX viewer
-To complement the collision viewer, a (still) more ambitious project has been made... With Travellers Tales GFX viewer you are able to see all level scenario models including the items. For now, Travellers Tales GFX viewer only works with TS2.
+To complement the collision viewer, a (still) more ambitious project has been made... With Travellers Tales GFX viewer you are able to see all level scenario models including the items. For now, Travellers Tales GFX viewer only works with TS2 and BLSC.
 
-At first, I supposed it would work with BLSC too (since collision engine is exactly the same) but it seems that GFX engine did had some little changes that breaks on this TT GFX viewer.
-
-## TS2
+## TS2 and BLSC
 
 With TT GFX viewer you can see all level scenario models including the items.
 
@@ -102,31 +100,32 @@ Things you can see:
 
 Things you can't see:
 * Sprites (Like stair bars at AH. Sprites are not 3d models, they are just plain 2d graphics placed at a 3D position)
-* Enemies (They are not present in level scene data, and are rendered out of this processed data)
+* Enemies and characters (They are not present in level scene data, and are rendered out of this processed data)
 * Coins (An extension of the GFX viewer to show coins was planned at a point, but I finally thinked that it wasn't necesary. Coins and items data array is placed at a fixed memory region for all levels just before collision data, very easy to find. Coins have id=0x10)
 
 Things Rendered:
-* Textured (pal4) and untextured meshes with alpha channel.
+* Textured (pal4/pal8) and untextured meshes with alpha channel.
 * Vertex colors (used for lightning and untextured meshes colors)
 * PSX color space (not linear)
 * Translucid materials (3 types: additive blending, substractive blending, and both=translucid)
-* Level background (pal8)
+* Level background
 
 Thing not rendered:
 * Special (reflecting?) material objects. They have a negative vertex count. Currently rendered with normal materials.
 
 ### The technical datails you always love <3
 
-Scenario is made of an array of different size scenario items (24/32 bytes). There's a different starting address for each level, that is passed as URL parameter. A LOD scenario follows the normal one.
+Scenario is made of an array of different size scenario items (24/32 bytes). There's a different starting address for each level, that is passed as URL parameter. A LOD scenario follows the normal one in TS2.
 Both size scenario items start with 32bit xyz positions followed by 16bit xyz rotation, and ends with 32bit object pointer.
 32 bit scenario elements has 16bit xyz scale components following the rotation.
 
 Objects starts with a 32bit vertex count (that is negative for special material). The following vertex array elements are made of 16bit xyz positions and a 16bit vertex color. Following the vertex array, there's a faces flag, palette & vram page byte, and faces count. At the end of the faces array you can find another faces flag, Palette & vram page, and count, or just 0xFFFF meaning no more faces. There are lot of 1bit flags like translucency, doublesided, textured, quads,... the faces array items are made of a 4 item list of 8bit vertex index (only 3 used for triangles). For textured elements is followed by a list of 4 8bit xy positions of face vertex UVs.
 
 #GFX viewer URL Parameters
-- **ds**: if set to **y**es, it forces all meshes to be double-sided, for better visibility of some levels. This is the only parameter you should play with.
+- **ds**: if set to **y**es, it forces all meshes to be double-sided, for better visibility of some levels.
+- **mult**: an optional parameter to set the size multiplier.
+
+- **game**: Game the savestate belongs to.
 - **gfxpointer**: A pointer to the scene element array to be rendered (EPSXE emulator address).
 - **gfxcount**: number of scene elements to be rendered.
-- **bkgpal**: Background texture palette index. If set to negative number, it disables background texture and uses the default blue background.
-- **texpagemap**: *palette & vram page byte* at object data is a number that represents a palette index and a vram page mapped to that palette index. This parameter contains this vram page mapping. Palette indexes starts from beggining in ascending order, and then from end in descending order, so we use a comma to divide.
-- **p2d**: *palette & vram page byte* at object data has two categories: One for level textures starting at 0x00 and other for common scene elements starting at 0x10. This parameter tells at which palette & vram page this second category starts.
+- **bkgy**: background vertical size for BLSC

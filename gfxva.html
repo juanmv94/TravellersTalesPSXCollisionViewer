@@ -14,8 +14,15 @@
 			var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
 				urlvars[key] = value;
 			});
+			var games = {
+				"blsc": {"clut": addtopos(0x800E2518),"bkgx": 256, "bkgy": parseInt(urlvars["bkgy"]),"thumbsp": 0},
+				"ts2": {"clut": addtopos(0x800CD200),"bkgx": 192, "bkgy":128,"thumbsp": 3},
+				"ts2demo": {"clut": addtopos(0x800BCCE0),"bkgx": 192, "bkgy":128,"thumbsp": 3},
+				"bugs": {},
+				"rascal": {}
+			};
 		
-			var mult=0.025;
+			var mult=urlvars["mult"]||0.025;
 			
 			var arrayBuffer;
 			var oReq = new XMLHttpRequest();
@@ -93,91 +100,93 @@
 			}
 			
 			function getBackgroundTexture() {	//Gets the background level texture (pal8 256color)
-				const pals=768+193*1024;
-				var palp=pals+1024*urlvars["bkgpal"];
-				const bkgp=832;
-				const x=192,y=128;
+				const bkgd=3072*4;
+				const x=games[urlvars["game"]].bkgx,y=games[urlvars["game"]].bkgy;
 				const multx=3,uy=144,dy=160;
-				
-				var p=new Array(256);
-				for (var i=0;i<256;i++) {
-					var color=vram[palp++];
-					p[i]=[colorcurve(color&31),colorcurve((color>>5)&31),colorcurve((color>>10)&31),255];
-				}
+
 				var imarray = new Uint8Array(x*(y+uy+dy)*4*multx*2);
 				var imarrp=0;
 				for (let i=0;i<y;i++)	//Each line
 				for (let my=0;my<=((i==0)?uy:(i==(y-1))?dy:0);my++) //repeat first and last line (uy,dy)
 				for (let mx=0;mx<multx;mx++) {		//Times x-repeating (normal+mirrored)			
-					var bkgpl=bkgp+1024*i
-					for (let j=0;j<(x/2);j++) {
-						var c1=vram[bkgpl]&255,c2=(vram[bkgpl]>>8)&255;
-						bkgpl++;
-						for (let i=0;i<4;i++) imarray[imarrp++]=p[c1][i];
-						for (let i=0;i<4;i++) imarray[imarrp++]=p[c2][i];
-					}
-					for (let j=0;j<(x/2);j++) {
-						bkgpl--;
-						var c2=vram[bkgpl]&255,c1=(vram[bkgpl]>>8)&255;
-						for (let i=0;i<4;i++) imarray[imarrp++]=p[c1][i];
-						for (let i=0;i<4;i++) imarray[imarrp++]=p[c2][i];
-					}
+					var bkgpl=bkgd+8192*4*i;
+					for (let j=0;j<x;j++) for (let k=0;k<4;k++) imarray[imarrp++]=textureba[bkgpl++];
+					bkgpl-=4;
+					for (let j=0;j<x;j++) {for (let k=0;k<4;k++) imarray[imarrp++]=textureba[bkgpl++]; bkgpl-=8;}
 				}
 				return new THREE.DataTexture( imarray, x*multx*2, y+uy+dy, THREE.RGBAFormat );
 			}
 			
 			function getPalTextures() {		//Gets the pal4 16color level textures
-				const pals16=768+193*1024;
-				var imarray = new Uint8Array(4096*256*4);
-				
-				var pals=new Array(64);
-				for (var n=0;n<64;n++) {
-					var palspage=new Array(16);
-					var palp=pals16+1024*n;
-					for (var j=0;j<16;j++) {
-						var pal=new Array(16);
-						for (var i=0;i<16;i++) {
+				function getpal(x,y) {	//returns palette for each pal4 texture pixel
+					if (vrampage<games[urlvars["game"]].thumbsp) {
+							if (y<32 && (x%64)<8) return palspage[Math.floor(y/8)*4+Math.floor(x%64/2)];
+							if (y<64 && (x%64)<16) return palspage[Math.floor(y/16)*4+Math.floor(x%64/4)];
+							if (y<128 && (x%64)<32) return palspage[Math.floor(y/32)*4+Math.floor(x%64/8)];
+					}
+					return palspage[Math.floor(y/64)*4+Math.floor(x%64/16)];
+				}
+			
+				//const pals16=768+193*1024;
+				textureba = new Uint8Array(8192*256*4);
+				var palspage,vrampage;
+				var lut=games[urlvars["game"]].clut;
+				for (let n=0;n<32;n++) {
+					vrampage=array16u[lut>>1]&0x7F;
+					var pal8=array16u[lut>>1]&0x80;
+					if (vrampage>15) {lut+=16;continue;}
+					var palp=array16u[(lut+2)>>1]*16;
+					if (!pal8) {
+						palspage=new Array(16);
+						for (var j=0;j<16;j++) {
+							var pal=new Array(16);
+							for (var i=0;i<16;i++) {
+								var color=vram[palp++];
+								if (!color) pal[i]=[0,0,0,10];
+								else pal[i]=[colorcurve(color&31),colorcurve((color>>5)&31),colorcurve((color>>10)&31),255];
+							}
+							palspage[j]=pal;
+						}
+						for (let y=0;y<256;y++) {
+							var imarrp=n*1024+8192*4*y;
+							var vrp=vrampage*64+1024*y;
+							for (let x=0;x<64;x++) {
+								var pal=getpal(x,y);
+								var c1=vram[vrp]&15,c2=(vram[vrp]>>4)&15,c3=(vram[vrp]>>8)&15,c4=(vram[vrp]>>12)&15;
+								for (let i=0;i<4;i++) textureba[imarrp++]=pal[c1][i];
+								for (let i=0;i<4;i++) textureba[imarrp++]=pal[c2][i];
+								for (let i=0;i<4;i++) textureba[imarrp++]=pal[c3][i];
+								for (let i=0;i<4;i++) textureba[imarrp++]=pal[c4][i];
+								vrp++;
+							}
+						}
+					} else {
+						var pal=new Array(256);
+						for (var i=0;i<256;i++) {
 							var color=vram[palp++];
 							if (!color) pal[i]=[0,0,0,10];
 							else pal[i]=[colorcurve(color&31),colorcurve((color>>5)&31),colorcurve((color>>10)&31),255];
 						}
-						palspage[j]=pal;
-					}
-					pals[n]=(palspage);
-				}
-				
-				function getpal(x,y) {	//returns THE FIRST palette for each pal4 texture pixel
-					if (texpagemap[0].indexOf(Math.floor(x/64))>=0) {
-						if (x<256) {
-							if (y<32 && (x%64)<8) return pals[texpagemap[0].indexOf(Math.floor(x/64))][Math.floor(y/8)*4+Math.floor(x%64/2)];
-							if (y<64 && (x%64)<16) return pals[texpagemap[0].indexOf(Math.floor(x/64))][Math.floor(y/16)*4+Math.floor(x%64/4)];
-							if (y<128 && (x%64)<32) return pals[texpagemap[0].indexOf(Math.floor(x/64))][Math.floor(y/32)*4+Math.floor(x%64/8)];
+						for (let y=0;y<256;y++) {
+							var imarrp=n*1024+8192*4*y;
+							var vrp=vrampage*64+1024*y;
+							for (let x=0;x<128;x++) {
+								var c1=vram[vrp]&255,c2=(vram[vrp]>>8)&255;
+								for (let i=0;i<4;i++) textureba[imarrp++]=pal[c1][i];
+								for (let i=0;i<4;i++) textureba[imarrp++]=pal[c2][i];
+								vrp++;
+							}
 						}
-						return pals[texpagemap[0].indexOf(Math.floor(x/64))][Math.floor(y/64)*4+Math.floor(x%64/16)];
 					}
-					if (texpagemap[1].indexOf(Math.floor(x/64)-1-Math.max(...texpagemap[0]))>=0) {
-						return pals[62-texpagemap[1].indexOf(Math.floor(x/64)-1-Math.max(...texpagemap[0]))][Math.floor(y/64)*4+Math.floor(x%64/16)];
-					}
-					return pals[0][0];
+					lut+=16;
 				}
-				
-				var imarrp=0;
-				for (var i=0;i<1024*256;i++) {
-					var c1=vram[i]&15,c2=(vram[i]>>4)&15,c3=(vram[i]>>8)&15,c4=(vram[i]>>12)&15;
-					var p=getpal(i%1024,Math.floor(i/1024));
-					for (let i=0;i<4;i++) imarray[imarrp++]=p[c1][i];
-					for (let i=0;i<4;i++) imarray[imarrp++]=p[c2][i];
-					for (let i=0;i<4;i++) imarray[imarrp++]=p[c3][i];
-					for (let i=0;i<4;i++) imarray[imarrp++]=p[c4][i];
-				}
-				return new THREE.DataTexture( imarray, 4096, 256, THREE.RGBAFormat );
+				return new THREE.DataTexture( textureba, 8192, 256, THREE.RGBAFormat );
 			}
 			
-			var texture,materialtex,materialtexst,materialtexsta,materialtexsts
+			var texture,textureba,materialtex,materialtexst,materialtexsta,materialtexsts
 			materialbasic=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors}), materialbasicst=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
 			materialbasicsta=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
-			materialbasicsts=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false}),
-			texpagemap=urlvars["texpagemap"].split(",").map(x=>[...x].map(x=>parseInt(x)));
+			materialbasicsts=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false});
 			
 			function getscenario(pos) {		//Returns the full level scenario
 				var group = new THREE.Group();
@@ -219,16 +228,6 @@
 				return group;
 			}
 			
-			function textpagedesp(textmap) {
-				if (textmap&0x10) {
-					var desp=texpagemap[1][textmap&15];
-					return 0.0625*urlvars["p2d"]+0.0625*desp;
-				} else {
-					var desp=((textmap&15) < texpagemap[0].length) ? texpagemap[0][textmap&15] : (urlvars["p2d"]==6)?10:6;	//this last part could be better
-					return 0.0625*desp;
-				}
-			}
-			
 			function getgfxo(pos) {
 				var npoints=Math.abs(array32[pos>>2]);
 				var specialmat=(array32[pos>>2]<0);		//Maybe reflective? not implemented
@@ -257,11 +256,12 @@
 				while (array16u[pos>>1]!=0xFFFF) {
 					var flags=array8u[pos++];
 					var textmap=array8u[pos++];
-					var n=array16u[pos>>1]; pos+=2;
-					if (n>4096) {
-						console.log("object faces too long! 0x"+postoadd(pos)+". "+(facestex.length+facesuntex.length)+" faces were read.");
+					var n=array16u[pos>>1]&0xFF;
+					if (array8u[pos+1]>=0xF0) {
+						console.log("object faces unknown val at 0x"+postopsxe(pos)+". "+(facestex.length+facesuntex.length)+" faces were read.");
 						return null;
 					}
+					pos+=2;
 					if (flags&16) for (let i=0; i<n; i++) {	//untextured
 						var face={};
 						face.flags=flags;
@@ -300,18 +300,18 @@
 						face.vertexColors[0] = points[f.p1].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p3].color;
 						geom.faces.push(face);
 						geom.faceVertexUvs[0].push([
-						  new THREE.Vector2(f.p2x/4096+textpagedesp(f.textmap), 1-f.p2y/256),
-						  new THREE.Vector2(f.p3x/4096+textpagedesp(f.textmap), 1-f.p3y/256),
-						  new THREE.Vector2(f.p4x/4096+textpagedesp(f.textmap), 1-f.p4y/256)
+						  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256),
+						  new THREE.Vector2(f.p3x/8192+(f.textmap&0x1F)*0.03125, 1-f.p3y/256),
+						  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256)
 						]);
 						if (f.flags&0x02 && (urlvars["ds"][0]!="y")) {	//doubleside
 							var face=new THREE.Face3(f.p3,f.p2,f.p1);
 							face.vertexColors[0] = points[f.p3].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p1].color;
 							geom.faces.push(face);
 							geom.faceVertexUvs[0].push([
-							  new THREE.Vector2(f.p4x/4096+textpagedesp(f.textmap), 1-f.p4y/256),
-							  new THREE.Vector2(f.p3x/4096+textpagedesp(f.textmap), 1-f.p3y/256),
-							  new THREE.Vector2(f.p2x/4096+textpagedesp(f.textmap), 1-f.p2y/256)
+							  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256),
+							  new THREE.Vector2(f.p3x/8192+(f.textmap&0x1F)*0.03125, 1-f.p3y/256),
+							  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256)
 							]);
 						}
 					}
@@ -320,34 +320,34 @@
 						face.vertexColors[0] = points[f.p4].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p3].color;
 						geom.faces.push(face);
 						geom.faceVertexUvs[0].push([
-						  new THREE.Vector2(f.p4x/4096+textpagedesp(f.textmap), 1-f.p4y/256),
-						  new THREE.Vector2(f.p2x/4096+textpagedesp(f.textmap), 1-f.p2y/256),
-						  new THREE.Vector2(f.p3x/4096+textpagedesp(f.textmap), 1-f.p3y/256)
+						  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256),
+						  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256),
+						  new THREE.Vector2(f.p3x/8192+(f.textmap&0x1F)*0.03125, 1-f.p3y/256)
 						]);
 						face=new THREE.Face3(f.p4,f.p1,f.p2);
 						face.vertexColors[0] = points[f.p4].color; face.vertexColors[1] = points[f.p1].color; face.vertexColors[2] = points[f.p2].color;
 						geom.faces.push(face);
 						geom.faceVertexUvs[0].push([
-						  new THREE.Vector2(f.p4x/4096+textpagedesp(f.textmap), 1-f.p4y/256),
-						  new THREE.Vector2(f.p1x/4096+textpagedesp(f.textmap), 1-f.p1y/256),
-						  new THREE.Vector2(f.p2x/4096+textpagedesp(f.textmap), 1-f.p2y/256)
+						  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256),
+						  new THREE.Vector2(f.p1x/8192+(f.textmap&0x1F)*0.03125, 1-f.p1y/256),
+						  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256)
 						]);
 						if (f.flags&0x02 && (urlvars["ds"][0]!="y")) {	//doubleside
 							var face=new THREE.Face3(f.p3,f.p2,f.p4);
 							face.vertexColors[0] = points[f.p3].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p4].color;
 							geom.faces.push(face);
 							geom.faceVertexUvs[0].push([
-							  new THREE.Vector2(f.p3x/4096+textpagedesp(f.textmap), 1-f.p3y/256),
-							  new THREE.Vector2(f.p2x/4096+textpagedesp(f.textmap), 1-f.p2y/256),
-							  new THREE.Vector2(f.p4x/4096+textpagedesp(f.textmap), 1-f.p4y/256)
+							  new THREE.Vector2(f.p3x/8192+(f.textmap&0x1F)*0.03125, 1-f.p3y/256),
+							  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256),
+							  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256)
 							]);
 							face=new THREE.Face3(f.p2,f.p1,f.p4);
 							face.vertexColors[0] = points[f.p2].color; face.vertexColors[1] = points[f.p1].color; face.vertexColors[2] = points[f.p4].color;
 							geom.faces.push(face);
 							geom.faceVertexUvs[0].push([
-							  new THREE.Vector2(f.p2x/4096+textpagedesp(f.textmap), 1-f.p2y/256),
-							  new THREE.Vector2(f.p1x/4096+textpagedesp(f.textmap), 1-f.p1y/256),
-							  new THREE.Vector2(f.p4x/4096+textpagedesp(f.textmap), 1-f.p4y/256)
+							  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256),
+							  new THREE.Vector2(f.p1x/8192+(f.textmap&0x1F)*0.03125, 1-f.p1y/256),
+							  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256)
 							]);
 						}
 					}
@@ -417,22 +417,20 @@
 				//scene.background=texture;		//Debug palette
 				
 				var bgMesh=null;
-				if (urlvars["bkgpal"]>=0) {
-					var bkgtex=getBackgroundTexture();
-					bkgtex.needsUpdate=true;
-					const shader = THREE.ShaderLib.equirect;
-					const material = new THREE.ShaderMaterial({
-						fragmentShader: shader.fragmentShader,
-						vertexShader: shader.vertexShader,
-						uniforms: shader.uniforms,
-						depthWrite: false,
-						side: THREE.BackSide,
-					 });
-					material.uniforms.tEquirect.value = bkgtex;
-					const plane = new THREE.BoxBufferGeometry(10000, 10000, 10000);
-					bgMesh = new THREE.Mesh(plane, material);
-					scene.add(bgMesh);
-				}
+				var bkgtex=getBackgroundTexture();
+				bkgtex.needsUpdate=true;
+				const shader = THREE.ShaderLib.equirect;
+				const material = new THREE.ShaderMaterial({
+					fragmentShader: shader.fragmentShader,
+					vertexShader: shader.vertexShader,
+					uniforms: shader.uniforms,
+					depthWrite: false,
+					side: THREE.BackSide,
+				 });
+				material.uniforms.tEquirect.value = bkgtex;
+				const plane = new THREE.BoxBufferGeometry(10000, 10000, 10000);
+				bgMesh = new THREE.Mesh(plane, material);
+				scene.add(bgMesh);
 				//scene.background=bkgtex;
 				
 				//var model=getgfxo(psxetopos(0x00B6AB84));
@@ -449,7 +447,7 @@
 					var newt=performance.now();
 					controls.update(newt-t);
 					t=newt;
-					if (bgMesh) bgMesh.position.copy(camera.position);
+					bgMesh.position.copy(camera.position);
 					renderer.render( scene, camera );
 				};
 				animate();
