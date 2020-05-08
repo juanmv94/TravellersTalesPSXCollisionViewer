@@ -87,21 +87,17 @@ These collision objects seems to have be used for testing during the development
 Collision shown in this viewer doesn't include dynamic object like enemies, and also doesn't include "limit walls". With "limit walls" I mean, walls that has X,Z coordinates, but has infinite height. Do you imagine seeing a wall going to the infinite space in this editor? It won't be very beautiful.
 
 # Travellers Tales PSX GFX viewer
-To complement the collision viewer, a (still) more ambitious project has been made... With Travellers Tales GFX viewer you are able to see all level scenario models including the items. For now, Travellers Tales GFX viewer only works with TS2 and BLSC.
-
-## TS2 and BLSC
-
-With TT GFX viewer you can see all level scenario models including the items.
+To complement the collision viewer, a (still) more ambitious project has been made... With Travellers Tales GFX viewer you are able to see all level scenario models including the items. For now, Travellers Tales GFX viewer works with BL, TS2, TS2 prototype, and BLSC.
 
 Things you can see:
 * Level scenario meshes
 * Level items (ex: extra life, battery, powerups)
-* Hidden items (with scale set to 0, like tokens, or first view buzz model)
+* Hidden items (with scale set to 0, like tokens, or first view buzz model in TS2)
 
 Things you can't see:
-* Sprites (Like stair bars at AH. Sprites are not 3d models, they are just plain 2d graphics placed at a 3D position)
+* Sprites (Like stair bars at AH. Sprites are not 3d models, they are just plain 2d graphics placed at a 3D position) Sprites are already detected, but if you are reading this, sprite render is not implemented.
 * Enemies and characters (They are not present in level scene data, and are rendered out of this processed data)
-* Coins (An extension of the GFX viewer to show coins was planned at a point, but I finally thinked that it wasn't necesary. Coins and items data array is placed at a fixed memory region for all levels just before collision data, very easy to find. Coins have id=0x10)
+* Coins (An extension of the GFX viewer to show coins was planned at a point, but I finally thinked that it wasn't necesary. Coins and items data array in TS2 final/proto is placed at a fixed memory region for all levels just before collision data, very easy to find. Coins have id=0x10)
 
 Things Rendered:
 * Textured (pal4/pal8) and untextured meshes with alpha channel.
@@ -115,11 +111,26 @@ Thing not rendered:
 
 ### The technical datails you always love <3
 
-Scenario is made of an array of different size scenario items (24/32 bytes). There's a different starting address for each level, that is passed as URL parameter. A LOD scenario follows the normal one in TS2.
+Scenario data is made of an array of different size scenario items (24/32 bytes). There's a different starting address for each level, that is passed as URL parameter. A LOD scenario follows the normal one in TS2 and BL.
 Both size scenario items start with 32bit xyz positions followed by 16bit xyz rotation, and ends with 32bit object pointer.
-32 bit scenario elements has 16bit xyz scale components following the rotation.
+32 bit scenario elements has 16bit xyz scale components following the rotation. **This scenario data structure is identical for all games**.
 
-Objects starts with a 32bit vertex count (that is negative for special material). The following vertex array elements are made of 16bit xyz positions and a 16bit vertex color. Following the vertex array, there's a faces flag, palette & vram page byte, and faces count. At the end of the faces array you can find another faces flag, Palette & vram page, and count, or just 0xFFFF meaning no more faces. There are lot of 1bit flags like translucency, doublesided, textured, quads,... the faces array items are made of a 4 item list of 8bit vertex index (only 3 used for triangles). For textured elements is followed by a list of 4 8bit xy positions of face vertex UVs.
+Objects starts with a 32bit vertex element count (that is negative for special material).
+*Note: If following the vertex data you find a 0x00000001, it means that is a group of sprite objects, not a 3D object, and vertex count is sprite count instead.*
+- **TS2/BLSC**: The following vertex array elements are made of 16bit xyz positions and a 16bit rgb15 vertex color (8byte).
+- **BL**: The following vertex array elements are made of 16bit xyz positions and a 4th padding 16 bit value with no use, followed by 3 bytes for 24bit rgb24 vertex color and a last byte for... flags or internal engine use (12 byte).
+Following the vertex array, there's a faces flag, palette & vram page & pal type byte, and faces count. At the end of the faces array you can find another faces flag, Palette & vram page & pal type, and count, or just 0xFFFF meaning no more faces. There are lot of 1bit flags like translucency, doublesided, textured, quads,... the faces array items are made of a 4 item list of 8bit vertex index (only 3 used for triangles). For textured elements is followed by a list of 4 8bit xy positions of face vertex UVs. *Note: if face is a triangle, in TS2 you still have 4 positions and 4UVs beeing 1 unused. In BL, you have instead 3 positions and 3UV, meaning a smaller face data size*.
+
+BLSC does use of PAL4 and PAL8 textures, while TS2 and BL only uses PAL4 textures except background (TS2 and BL engine has support for using PAL8 textures, but not used).
+
+### Engine diferences
+Like with collision data, TS2 and BLSC engines are almost identical, and code used for reading GFX data is the same.
+BL engine
+Color LUT and VRAM page combinations are in the same data structure for TS2 and BLSC, while BL has 2 diferent data structures, one for VRAM pages, and color LUTs.
+Face data uses 8byte vertex numbers for TS2/BLSC while it uses 16byte vertex pointers in BL.
+Despite diferences in vertex and face data, BL and TS2/BLSC engines still has lots of thing in common like the face flags, which are the same, Palette & vram page & pal type also works the same way, special material using negative vertex count,...
+Background size for TS2 is always the same. In BLSC background height is variable, and for BL both height and width are variable.
+
 
 #GFX viewer URL Parameters
 - **ds**: if set to **y**es, it forces all meshes to be double-sided, for better visibility of some levels.
@@ -128,4 +139,5 @@ Objects starts with a 32bit vertex count (that is negative for special material)
 - **game**: Game the savestate belongs to.
 - **gfxpointer**: A pointer to the scene element array to be rendered (EPSXE emulator address).
 - **gfxcount**: number of scene elements to be rendered.
-- **bkgy**: background vertical size for BLSC
+- **bkgx**: background vertical size for BL
+- **bkgy**: background vertical size for BL and BLSC

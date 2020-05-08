@@ -15,10 +15,10 @@
 				urlvars[key] = value;
 			});
 			var games = {
-				"blsc": {"clut": addtopos(0x800E2518),"bkgx": 256, "bkgy": parseInt(urlvars["bkgy"]),"thumbsp": 0},
-				"ts2": {"clut": addtopos(0x800CD200),"bkgx": 192, "bkgy":128,"thumbsp": 3},
-				"ts2demo": {"clut": addtopos(0x800BCCE0),"bkgx": 192, "bkgy":128,"thumbsp": 3},
-				"bugs": {},
+				"blsc": {"clut": addtopos(0x800E2518),"bkgd": 3072, "bkgx": 256, "bkgy": parseInt(urlvars["bkgy"]),"thumbsp": 0, "getgfxo": getgfxots2},
+				"ts2": {"clut": addtopos(0x800CD200),"bkgd": 3072, "bkgx": 192, "bkgy":128,"thumbsp": 3, "getgfxo": getgfxots2},
+				"ts2demo": {"clut": addtopos(0x800BCCE0),"bkgd": 3072, "bkgx": 192, "bkgy":128,"thumbsp": 3, "getgfxo": getgfxots2},
+				"bugs": {"clutpag": addtopos(0x800910B0),"bkgd": 1280, "clutpal": addtopos(0x800A7DD8),"bkgx": parseInt(urlvars["bkgx"]), "bkgy": parseInt(urlvars["bkgy"]),"thumbsp": 0, "getgfxo": getgfxobugs},
 				"rascal": {}
 			};
 		
@@ -100,7 +100,7 @@
 			}
 			
 			function getBackgroundTexture() {	//Gets the background level texture (pal8 256color)
-				const bkgd=3072*4;
+				const bkgd=games[urlvars["game"]].bkgd*4;
 				const x=games[urlvars["game"]].bkgx,y=games[urlvars["game"]].bkgy;
 				const multx=3,uy=144,dy=160;
 
@@ -130,12 +130,15 @@
 				//const pals16=768+193*1024;
 				textureba = new Uint8Array(8192*256*4);
 				var palspage,vrampage;
-				var lut=games[urlvars["game"]].clut;
+				var lut=games[urlvars["game"]].clut, lutpal, lutpag;
+				if (!lut) {	//BL has PAL LUT and VRAM page at two diferent addresses 
+					lutpal=games[urlvars["game"]].clutpal; lutpag=games[urlvars["game"]].clutpag;
+				}
 				for (let n=0;n<32;n++) {
-					vrampage=array16u[lut>>1]&0x7F;
-					var pal8=array16u[lut>>1]&0x80;
-					if (vrampage>15) {lut+=16;continue;}
-					var palp=array16u[(lut+2)>>1]*16;
+					vrampage=array16u[(lut||lutpag)>>1]&0x7F;
+					var pal8=array16u[(lut||lutpag)>>1]&0x80;
+					if (vrampage>15) {if (lut) lut+=16; else {lutpag+=2; lutpal+=2} continue;}
+					var palp=array16u[(lutpal||(lut+2))>>1]*16;
 					if (!pal8) {
 						palspage=new Array(16);
 						for (var j=0;j<16;j++) {
@@ -178,7 +181,7 @@
 							}
 						}
 					}
-					lut+=16;
+					if (lut) lut+=16; else {lutpag+=2; lutpal+=2}
 				}
 				return new THREE.DataTexture( textureba, 8192, 256, THREE.RGBAFormat );
 			}
@@ -196,7 +199,7 @@
 						console.log("no more scenario elements from index "+i);
 						break;
 					}
-					var gfxo=getgfxo(addtopos(array32u[pos+elsize-4>>2]));
+					var gfxo=games[urlvars["game"]].getgfxo(addtopos(array32u[pos+elsize-4>>2]));
 					if (gfxo==null) {
 						console.log("Error loading object "+postopsxe(addtopos(array32u[pos+elsize-4>>2]))+" at sceneobj "+postopsxe(pos));
 						pos+=elsize;
@@ -216,7 +219,7 @@
 							gfxo.scale.z=mult*array16[(pos+22)>>1]/4096;
 						} else {
 							gfxo.scale.x=mult; gfxo.scale.y=mult; gfxo.scale.z=mult;
-							console.log("scenario element at "+postoadd(pos)+" is hidden");
+							console.log("scenario element at "+postopsxe(pos)+" is hidden");
 						}
 					} else {
 						gfxo.scale.x=mult; gfxo.scale.y=mult; gfxo.scale.z=mult;
@@ -228,11 +231,80 @@
 				return group;
 			}
 			
-			function getgfxo(pos) {
+			function getgfxobugs(pos) {
+				var npoints=Math.abs(array32[pos>>2]);
+				var specialmat=(array32[pos>>2]<0);		//Maybe reflective? not implemented
+				if (npoints>4096) {
+					console.log("object points too long! 0x"+postopsxe(pos));
+					return null;
+				}
+				if (array32u[(pos>>2)+npoints*3+1]==1) {
+					console.log("sprite scene object not implemented! 0x"+postopsxe(pos));	//ex: bugs lvl1 sceneobj 0xbf3ad8 (wall at finish)
+					return null;
+				}
+				pos+=4;
+				var points=new Array(npoints);
+				
+				for (let i=0; i<npoints; i++) {
+					var point={};
+					point.x=array16[pos>>1]; pos+=2;
+					point.y=array16[pos>>1]; pos+=2;
+					point.z=array16[pos>>1]; pos+=2;
+					point.padding=array16[pos>>1]; pos+=2;
+					point.color=new THREE.Color(array8u[pos]/255,array8u[pos+1]/255,array8u[pos+2]/255); pos+=3;
+					point.flag=array8u[pos++];
+					points[i]=point;
+				}
+				//console.log(points);
+				if (specialmat) pos+=(npoints)*6;	//special mat data skip
+				var facestex=[],facesuntex=[];
+				while (array16u[pos>>1]!=0xFFFF) {
+					var flags=array8u[pos++];
+					var textmap=array8u[pos++];
+					var n=array16u[pos>>1]&0xFF;
+					if (array8u[pos+1]>=0xF0) {
+						console.log("object faces unknown val at 0x"+postopsxe(pos)+". "+(facestex.length+facesuntex.length)+" faces were read.");
+						return null;
+					}
+					pos+=2;
+					if (flags&16) for (let i=0; i<n; i++) {	//untextured
+						var face={};
+						face.flags=flags;
+						face.textmap=textmap;
+						face.p1=array16u[pos>>1]/12; pos+=2;
+						face.p2=array16u[pos>>1]/12; pos+=2;
+						face.p3=array16u[pos>>1]/12; pos+=2;
+						if (!(flags&1)) {face.p4=array16u[pos>>1]/12; pos+=2;}	//triangles
+						facesuntex.push(face);
+					} else for (let i=0; i<n; i++) { //textured
+						var face={};
+						face.flags=flags;
+						face.textmap=textmap;
+						face.p1=array16u[pos>>1]/12; pos+=2;
+						face.p2=array16u[pos>>1]/12; pos+=2;
+						face.p3=array16u[pos>>1]/12; pos+=2;
+						if (!(flags&1)) {face.p4=array16u[pos>>1]/12; pos+=2;}	//triangles
+						if (!(flags&1)) {face.p1x=array8u[pos++]; face.p1y=array8u[pos++]; }
+						face.p2x=array8u[pos++]; face.p2y=array8u[pos++];
+						face.p3x=array8u[pos++]; face.p3y=array8u[pos++];
+						face.p4x=array8u[pos++]; face.p4y=array8u[pos++];
+						facestex.push(face);
+					}
+					
+				}
+				//console.log(facestex); console.log(facesuntex);
+				return processVertexAndFaces(points,facestex,facesuntex,specialmat);
+			}
+			
+			function getgfxots2(pos) {
 				var npoints=Math.abs(array32[pos>>2]);
 				var specialmat=(array32[pos>>2]<0);		//Maybe reflective? not implemented
 				if (npoints>255) {
-					console.log("object points too long! 0x"+postoadd(pos));
+					console.log("object points too long! 0x"+postopsxe(pos));
+					return null;
+				}
+				if (array32u[(pos>>2)+npoints*2+1]==1) {
+					console.log("sprite scene object not implemented! 0x"+postopsxe(pos));
 					return null;
 				}
 				pos+=4;
@@ -288,6 +360,10 @@
 					
 				}
 				//console.log(facestex); console.log(facesuntex);
+				return processVertexAndFaces(points,facestex,facesuntex,specialmat);
+			}
+			
+			function processVertexAndFaces(points,facestex,facesuntex,specialmat) {	//Same processing for TS2, BLSC, and Bugs
 				var geometrytex = new THREE.Geometry(), geometryuntex = new THREE.Geometry(), geometrytexst = new THREE.Geometry(), geometryuntexst = new THREE.Geometry(), geometrytexsta = new THREE.Geometry(), geometryuntexsta = new THREE.Geometry(), geometrytexsts = new THREE.Geometry(), geometryuntexsts = new THREE.Geometry();
 				points.forEach(p=>{
 					var v=new THREE.Vector3(p.x,p.y,p.z);
@@ -415,7 +491,7 @@
 				});
 				
 				//scene.background=texture;		//Debug palette
-				
+
 				var bgMesh=null;
 				var bkgtex=getBackgroundTexture();
 				bkgtex.needsUpdate=true;
