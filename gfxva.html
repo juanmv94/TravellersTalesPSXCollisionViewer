@@ -82,8 +82,8 @@
 				intersects = raycaster.intersectObjects(scene.children, true);
 				if (intersects.length > 0){
 					var obj=intersects[0].object;
-					console.log(obj.parent.ba);
-					
+					if (obj.parent.ba) console.log(obj.parent.ba);
+					else if (obj.parent.parent) console.log(obj.parent.parent.ba);
 				} else {
 					
 				}
@@ -186,7 +186,7 @@
 				return new THREE.DataTexture( textureba, 8192, 256, THREE.RGBAFormat );
 			}
 			
-			var texture,textureba,materialtex,materialtexst,materialtexsta,materialtexsts
+			var texture,textureba,materialtex,materialtexst,materialtexsta,materialtexsts,sprites=[],
 			materialbasic=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors}), materialbasicst=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
 			materialbasicsta=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
 			materialbasicsts=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false});
@@ -227,13 +227,14 @@
 					group.add(gfxo);
 					pos+=elsize;
 				}
-				console.log(postopsxe(pos));
+				console.log("End reading scene objects at 0x"+postopsxe(pos));
 				return group;
 			}
 			
 			function getgfxobugs(pos) {
 				var npoints=Math.abs(array32[pos>>2]);
 				var specialmat=(array32[pos>>2]<0);		//Maybe reflective? not implemented
+				if (gfxoissprite(pos) && !specialmat) return getsprite(pos);
 				if (npoints>4096) {
 					console.log("object points too long! 0x"+postopsxe(pos));
 					return null;
@@ -251,12 +252,12 @@
 					point.y=array16[pos>>1]; pos+=2;
 					point.z=array16[pos>>1]; pos+=2;
 					point.padding=array16[pos>>1]; pos+=2;
-					point.color=new THREE.Color(array8u[pos]/255,array8u[pos+1]/255,array8u[pos+2]/255); pos+=3;
+					point.color=new THREE.Color(Math.sin(array8u[pos]/255*Math.PI/2),Math.sin(array8u[pos+1]/255*Math.PI/2),Math.sin(array8u[pos+2]/255*Math.PI/2)); pos+=3;
 					point.flag=array8u[pos++];
 					points[i]=point;
 				}
 				//console.log(points);
-				if (specialmat) pos+=(npoints)*6;	//special mat data skip
+				if (specialmat) pos+=(npoints)*6+(npoints%2)*2;	//special mat data skip
 				var facestex=[],facesuntex=[];
 				while (array16u[pos>>1]!=0xFFFF) {
 					var flags=array8u[pos++];
@@ -303,10 +304,7 @@
 					console.log("object points too long! 0x"+postopsxe(pos));
 					return null;
 				}
-				if (array32u[(pos>>2)+npoints*2+1]==1) {
-					console.log("sprite scene object not implemented! 0x"+postopsxe(pos));
-					return null;
-				}
+				if (gfxoissprite(pos) && !specialmat) return getsprite(pos);
 				pos+=4;
 				var points=new Array(npoints);
 				
@@ -361,6 +359,53 @@
 				}
 				//console.log(facestex); console.log(facesuntex);
 				return processVertexAndFaces(points,facestex,facesuntex,specialmat);
+			}
+			
+			function gfxoissprite(pos) {
+				const maxspp=4;
+				var nsprites=array32u[pos>>2];
+				pos+=12*nsprites+4;
+				for (let i=0;i<nsprites;i++) {
+					var count=array32u[pos>>2];
+					if (count==0 || count>maxspp) return false;
+					pos+=4+count*44;
+				}
+				return true;
+			}
+			
+			function getsprite(pos) {
+				var nsprites=array32[pos>>2];
+				pos+=4;
+				var sobjs=new THREE.Group();
+				var sprs=new Array(nsprites);
+				for (let i=0;i<nsprites;i++) {sprs[i]={x:array32[pos>>2], y:array32[(pos>>2)+1], z:array32[(pos>>2)+2]};pos+=12;}
+				for (let i=0;i<nsprites;i++) {
+					var count=array32[pos>>2];
+					pos+=4;
+					for (let j=0;j<count;j++) {
+						var face={p1:0, p2:1, p3:2 ,p4:3};
+						var vertex=[{},{},{},{}];
+						vertex[0].x=array16[pos>>1]; pos+=2; vertex[0].y=array16[pos>>1]; pos+=2; vertex[0].z=0;
+						vertex[1].x=array16[pos>>1]; pos+=2; vertex[1].y=array16[pos>>1]; pos+=2; vertex[1].z=0;
+						vertex[2].x=array16[pos>>1]; pos+=2; vertex[2].y=array16[pos>>1]; pos+=2; vertex[2].z=0;
+						vertex[3].x=array16[pos>>1]; pos+=2; vertex[3].y=array16[pos>>1]; pos+=2; vertex[3].z=0;
+						face.pad=array16[pos>>1]; pos+=2;
+						face.textmap=array16[pos>>1]&0x1F; face.flags=array16[pos>>1]&0xE0|0x02; pos+=2;
+						face.p1x=array8u[pos++]; face.p1y=array8u[pos++];
+						face.p2x=array8u[pos++]; face.p2y=array8u[pos++];
+						face.p3x=array8u[pos++]; face.p3y=array8u[pos++];
+						face.p4x=array8u[pos++]; face.p4y=array8u[pos++];
+						vertex[0].color=new THREE.Color(Math.sin(array8u[pos]/255*Math.PI/2),Math.sin(array8u[pos+1]/255*Math.PI/2),Math.sin(array8u[pos+2]/255*Math.PI/2)); pos+=4;
+						vertex[1].color=new THREE.Color(Math.sin(array8u[pos]/255*Math.PI/2),Math.sin(array8u[pos+1]/255*Math.PI/2),Math.sin(array8u[pos+2]/255*Math.PI/2)); pos+=4;
+						vertex[2].color=new THREE.Color(Math.sin(array8u[pos]/255*Math.PI/2),Math.sin(array8u[pos+1]/255*Math.PI/2),Math.sin(array8u[pos+2]/255*Math.PI/2)); pos+=4;
+						vertex[3].color=new THREE.Color(Math.sin(array8u[pos]/255*Math.PI/2),Math.sin(array8u[pos+1]/255*Math.PI/2),Math.sin(array8u[pos+2]/255*Math.PI/2)); pos+=4;
+						var o=processVertexAndFaces(vertex,[face],[],false);
+						o.position.x=sprs[i].x; o.position.y=sprs[i].y; o.position.z=sprs[i].z;
+						sobjs.add(o);
+					}
+				}
+				sprites.push(sobjs);
+				return sobjs;
 			}
 			
 			function processVertexAndFaces(points,facestex,facesuntex,specialmat) {	//Same processing for TS2, BLSC, and Bugs
@@ -509,7 +554,7 @@
 				scene.add(bgMesh);
 				//scene.background=bkgtex;
 				
-				//var model=getgfxo(psxetopos(0x00B6AB84));
+				//var model=getgfxots2(psxetopos(0x00B6AB84));
 				var model=getscenario(psxetopos(parseInt(urlvars["gfxpointer"])));
 				scene.add(model);
 				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
@@ -524,6 +569,12 @@
 					controls.update(newt-t);
 					t=newt;
 					bgMesh.position.copy(camera.position);
+					sprites.forEach(g=>g.children.forEach(s=>{
+						var d=[s.parent.position.x-camera.position.x,s.parent.position.z-camera.position.z];
+						var angle=Math.atan(d[0]/d[1]);
+						if (d[1]>0) angle+=Math.PI;
+						s.rotation.y=angle-s.parent.rotation.y;
+					}));
 					renderer.render( scene, camera );
 				};
 				animate();
