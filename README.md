@@ -1,23 +1,28 @@
-# Travellers Tales PSX Collision viewer
+# Travellers Tales PSX Collision & GFX viewer
 
-Travellers Tales videogame company realeased 4 PSX videogames that uses the same 3D engine with minor improvements on each title:
+Travellers Tales videogame company realeased 5 PSX videogames that uses the same 3D engine with minor improvements on each title:
 
 - **Rascal**: This is the first PSX title developed by Travellers Tales. It is said to be the worst PSX game ever made. This was due to the use of rotational control, and TT team beeing focused on the development of Sonic R.
 - **Bugs Life**: Videogame based on the same title Pixar movie. It (finally) uses directional controls.
-- **Toy Story 2**: Videogame based on the same title Pixar movie. It is the best of the 4 PSX videogames with lots of games sold and a rating of 9.1/10 (Metacritic)
+- **Toy Story 2**: Videogame based on the same title Pixar movie. It is the best of the 5 PSX videogames with lots of games sold and a rating of 9.1/10 (Metacritic)
+- **Muppet Race Mania**: A racing game with not very good ratings
 - **Buzz Lightyear of Star Command** (BLSC): This game is based on the animated series of the same name. This game was probably made due to the success of the previous game.
 
 ## How to use
 You can try the online version of the tool [here](https://priceless-pike-6c8ff8.netlify.com/ "here").
-The collision viewer reads the collision data from PSX savestates from an emulator (PSXE). These savestates must be uncompressed, so if they are, you must uncompress them first (you can use [offzip](https://aluigi.altervista.org/mytoolz/offzip.zip "offzip") for example).
+The collision & GFX viewer reads the collision and GFX data from PSX savestates from an emulator (PSXE). These savestates must be uncompressed, and you must uncompress them first by renaming it's extension to **.GZ** and using your favorite tool like 7Zip / WinRAR to uncompress it.
 Anyway, some example savestates are provided.
-The viewer core is in *viewer.html*  and you should pass it a *file* parameter with the name of the file inside the *SSTATES* folder and a *game* parameter with the game wich correspond the savestate. You have links with this parameters in *index.html*, no need to type them manually.
-When you open the viewer (assuming correct parameters) you will see a black screen, that will change when the file loads. Camera will spawn at [0,0,0] coordinates, so if you don't know where you are, look arround and move.
+
 The controls are the following:
 - **WASD**: move
 - **QE**: rotate
 - **Mouse move**: look arround
 - **Mouse click**: select/deselect object
+
+# Travellers Tales PSX Collision viewer
+
+The collision viewer core is in *viewer.html*  and you should pass it a *file* parameter with the name of the file inside the *SSTATES* folder and a *game* parameter with the game wich correspond the savestate. You have links with this parameters in *index.html*, no need to type them manually.
+When you open the viewer (assuming correct parameters) you will see a black screen, that will change when the file loads. Camera will spawn at [0,0,0] coordinates, so if you don't know where you are, look arround and move. MRM is the only game not present in collision viewer since it's the only not-platform game and aparently uses a diferent collision system.
 
 ## Color guide
 Floor meshes are walkable, but they also act like walls
@@ -87,7 +92,7 @@ These collision objects seems to have be used for testing during the development
 Collision shown in this viewer doesn't include dynamic object like enemies, and also doesn't include "limit walls". With "limit walls" I mean, walls that has X,Z coordinates, but has infinite height. Do you imagine seeing a wall going to the infinite space in this editor? It won't be very beautiful.
 
 # Travellers Tales PSX GFX viewer
-To complement the collision viewer, a (still) more ambitious project has been made... With Travellers Tales GFX viewer you are able to see all level scenario models including the items. For now, Travellers Tales GFX viewer works with BL, TS2, TS2 prototype, and BLSC.
+To complement the collision viewer, a (still) more ambitious project has been made... With Travellers Tales GFX viewer you are able to see all level scenario models including the items. Travellers Tales GFX viewer works with all Traveller's Tales GFX games excepting Rascal.
 
 Things you can see:
 * Level scenario meshes
@@ -112,25 +117,23 @@ Thing not rendered:
 ## The technical datails you always love <3
 
 Scenario data is made of an array of different size scenario items (24/32 bytes). There's a different starting address for each level, that is passed as URL parameter. A LOD scenario follows the normal one in TS2 and BL.
-Both size scenario items start with 32bit xyz positions followed by 16bit xyz rotation, and ends with 32bit object pointer.
+Both size scenario items start with 32bit xyz positions followed by 16bit xyz rotation, and ends with 32bit 3D/sprites object pointer.
 32 bit scenario elements has 16bit xyz scale components following the rotation. **This scenario data structure is identical for all games**.
 
-Objects starts with a 32bit vertex element count (that is negative for special material).
-*Note: If following the vertex data you find a 0x00000001, it means that is a group of sprite objects, not a 3D object, and vertex count is sprite count instead.*
-- **TS2/BLSC**: The following vertex array elements are made of 16bit xyz positions and a 16bit rgb15 vertex color (8byte).
+3D objects starts with a 32bit vertex element count (that is negative for special material).
+- **TS2/MRM/BLSC**: The following vertex array elements are made of 16bit xyz positions and a 16bit rgb15 vertex color (8byte).
 - **BL**: The following vertex array elements are made of 16bit xyz positions and a 4th padding 16 bit value with no use, followed by 3 bytes for 24bit rgb24 vertex color and a last byte for... flags or internal engine use (12 byte).
 
 Following the vertex array, there's a faces flag, palette & vram page & pal type byte, and faces count. At the end of the faces array you can find another faces flag, Palette & vram page & pal type, and count, or just 0xFFFF meaning no more faces. There are lot of 1bit flags like translucency, doublesided, textured, quads,... the faces array items are made of a 4 item list of 8bit vertex index (only 3 used for triangles). For textured elements is followed by a list of 4 8bit xy positions of face vertex UVs. *Note: if face is a triangle, in TS2 you still have 4 positions and 4UVs beeing 1 unused. In BL, you have instead 3 positions and 3UV, meaning a smaller face data size*.
 
-BLSC does use of PAL4 and PAL8 textures, while TS2 and BL only uses PAL4 textures except background (TS2 and BL engine has support for using PAL8 textures, but not used).
+BLSC does use of PAL4 and PAL8 textures, while TS2/MRM and BL only uses PAL4 textures except background (TS2/MRM and BL engine has support for using PAL8 textures, but not used).
 
 ## Engine diferences
-Like with collision data, TS2 and BLSC engines are almost identical, and code used for reading GFX data is the same.
-BL engine
-Color LUT and VRAM page combinations are in the same data structure for TS2 and BLSC, while BL has 2 diferent data structures, one for VRAM pages, and color LUTs.
-Face data uses 8byte vertex numbers for TS2/BLSC while it uses 16byte vertex pointers in BL.
-Despite diferences in vertex and face data, BL and TS2/BLSC engines still has lots of thing in common like the face flags, which are the same, Palette & vram page & pal type also works the same way, special material using negative vertex count,...
-Background size for TS2 is always the same. In BLSC background height is variable, and for BL both height and width are variable.
+- Like with collision data, TS2 and BLSC engines are almost identical, and code used for reading GFX data is the same. The same with MRM despite using a diferent collision engine.
+- Color LUT and VRAM page combinations are in the same data structure for TS2/MRM/BLSC, while BL has 2 diferent data structures, one for VRAM pages, and color LUTs.
+- Face data uses 8byte vertex numbers for TS2/MRM/BLSC while it uses 16byte vertex pointers in BL.
+- Despite diferences in vertex and face data, BL and TS2/MRM/BLSC engines still has lots of thing in common like the face flags, which are the same, Palette & vram page & pal type also works the same way, special material using negative vertex count,... More surprisingly, sprite data structure is equal, and continues using 24bit vertex color data in TS2/MRM/BLSC.
+- Background size for TS2 is always the same. In BLSC background height is variable, and for BL both height and width are variable. MRM doesn't have textured backgrounds.
 
 
 ## GFX viewer URL Parameters
@@ -143,6 +146,9 @@ Background size for TS2 is always the same. In BLSC background height is variabl
 - **bkgx**: background vertical size for BL
 - **bkgy**: background vertical size for BL and BLSC
 
-## FAQS
-- **Alpha textures are not correctly rendered. I can see background through it!**
-This is a WebGL issue: depth write always causes back elements not to be rendered, and disabling depth write makes element order to be incorrect. For this reason depth write has been disabled only for translucid, additive, and sustractive blending materials, but not for normal material with alpha textures.
+# Files in TT PSX games
+Game ISOs from Travellers Tales games contains the following file formats:
+
+* **DAT**: Contains coin/object positions, model object and scene data (just models, no textures). It's the same model data that GFX viewer reads directly from savestates
+* **ALL**: Contains collision object and scene data. Scene collision data is processed at level loading, while object collision is the same data that collision viewer reads directly from savestates
+* **RAW**: This is a packed and compressed file using *RNC PRO-PACK* compression. Contains many level data, including level textures. It also seems to contains a compressed exact copy of ALL file in TS2 (WTF??)

@@ -1,0 +1,48 @@
+Short: RNC ProPack - multi-format file packer
+Version: 2.08
+Uploader: iancourt@hotmail.com (Ian Court)
+Author: Rob Northen Computing
+Type: util/pack
+
+
+
+This is the final release of PRO-PACK from Rob Northen Computing. Since Rob
+Northen Computing are nolonger trading, this utility has become freely
+distributable.
+
+This may be particularly useful for Amiga users as this is the packer that
+Sensible Software used for the data files in SWOS. Now you can edit those
+teams and actually save them back to disk in crunched format - no need to
+delete other team files to fit edited teams on the disk, and no crashes due
+to internal buffers being filled!
+
+This is the complete RNC PRO-PACK distribution, directly from Rob Northen
+Computing, which also contains useful assembler code.
+
+
+
+The archive contains:
+
+PPIBM.EXE                  - File packer (PC 286 version)
+PPAMI.EXE                  - file packer (Amiga version)
+PP.DOC                     - PRO-PACK manual
+SOURCE (dir)               - Assembler unpack source files
+    IBMPC (dir)
+        RNC_1.ASM          - 8086 Method 1
+        RNC_2.ASM          - 8086 Method 2
+    MC68000 (dir)
+        RNC_1C.S           - MC68000 Method 1 Compact Version (consoles)
+        RNC_2C.S           - MC68000 Method 2 Compact Version (consoles)
+        RNC_1.S            - MC68000 Method 1
+        RNC_2.S            - MC68000 Method 2
+    GAMEBOY (dir)
+        RNC_2.S            - Z80 GameBoy Method 2
+    SUPERNES (dir)
+        RNC_1.S            - 65816 Method 1
+        RNC_2.S            - 65816 Method 2
+    LYNX (dir)
+        RNC.MAC            - RNC macros
+        RNC_1.SRC          - 65C02 Atari Lynx Method 1
+        RNC_2.SRC          - 65C02 Atari Lynx Method 2
+    MIPS R4300
+        RNC_1.ASM          - Mips R4300 Method 1

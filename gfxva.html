@@ -19,7 +19,7 @@
 				"ts2": {"clut": addtopos(0x800CD200),"bkgd": 3072, "bkgx": 192, "bkgy":128,"thumbsp": 3, "getgfxo": getgfxots2},
 				"ts2demo": {"clut": addtopos(0x800BCCE0),"bkgd": 3072, "bkgx": 192, "bkgy":128,"thumbsp": 3, "getgfxo": getgfxots2},
 				"bugs": {"clutpag": addtopos(0x800910B0),"bkgd": 1280, "clutpal": addtopos(0x800A7DD8),"bkgx": parseInt(urlvars["bkgx"]), "bkgy": parseInt(urlvars["bkgy"]),"thumbsp": 0, "getgfxo": getgfxobugs},
-				"rascal": {}
+				"mrm": {"clut": addtopos(0x800DFF00),"bkgd": 3072, "bkgx": 1, "bkgy": 1,"thumbsp": 3, "getgfxo": getgfxots2}
 			};
 		
 			var mult=urlvars["mult"]||0.025;
@@ -516,7 +516,7 @@
 				texture.needsUpdate=true;
 				materialtex=new THREE.MeshBasicMaterial({
 					side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
-					wireframe: false, transparent:true,
+					wireframe: false, alphaTest:0.5,
 					vertexColors: THREE.FaceColors
 				});
 				materialtexst=new THREE.MeshBasicMaterial({
