@@ -19,6 +19,7 @@
 				"ts2": {"clut": addtopos(0x800CD200),"bkgd": 3072, "bkgx": 192, "bkgy":128,"thumbsp": 3, "getgfxo": getgfxots2},
 				"ts2demo": {"clut": addtopos(0x800BCCE0),"bkgd": 3072, "bkgx": 192, "bkgy":128,"thumbsp": 3, "getgfxo": getgfxots2},
 				"bugs": {"clutpag": addtopos(0x800910B0),"bkgd": 1280, "clutpal": addtopos(0x800A7DD8),"bkgx": parseInt(urlvars["bkgx"]), "bkgy": parseInt(urlvars["bkgy"]),"thumbsp": 0, "getgfxo": getgfxobugs},
+				"bugsdemo": {"clutpag": addtopos(0x80094740),"bkgd": 1536, "clutpal": addtopos(0x800a6be8),"bkgx": parseInt(urlvars["bkgx"]), "bkgy": parseInt(urlvars["bkgy"]),"thumbsp": 0, "getgfxo": getgfxobugs},
 				"mrm": {"clut": addtopos(0x800DFF00),"bkgd": 3072, "bkgx": 1, "bkgy": 1,"thumbsp": 3, "getgfxo": getgfxots2}
 			};
 		
@@ -421,7 +422,7 @@
 						face.vertexColors[0] = points[f.p1].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p3].color;
 						geom.faces.push(face);
 						geom.faceVertexUvs[0].push([
-						  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256),
+						  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256-((f.p2y==f.p4y && f.p2y==f.p3y)?(1/256):0)),
 						  new THREE.Vector2(f.p3x/8192+(f.textmap&0x1F)*0.03125, 1-f.p3y/256),
 						  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256)
 						]);
@@ -432,7 +433,7 @@
 							geom.faceVertexUvs[0].push([
 							  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256),
 							  new THREE.Vector2(f.p3x/8192+(f.textmap&0x1F)*0.03125, 1-f.p3y/256),
-							  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256)
+							  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256-((f.p2y==f.p4y && f.p2y==f.p3y)?(1/256):0))
 							]);
 						}
 					}
@@ -442,7 +443,7 @@
 						geom.faces.push(face);
 						geom.faceVertexUvs[0].push([
 						  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256),
-						  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256),
+						  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256-((f.p2y==f.p4y && f.p2y==f.p3y)?(1/256):0)),
 						  new THREE.Vector2(f.p3x/8192+(f.textmap&0x1F)*0.03125, 1-f.p3y/256)
 						]);
 						face=new THREE.Face3(f.p4,f.p1,f.p2);
@@ -451,7 +452,7 @@
 						geom.faceVertexUvs[0].push([
 						  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256),
 						  new THREE.Vector2(f.p1x/8192+(f.textmap&0x1F)*0.03125, 1-f.p1y/256),
-						  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256)
+						  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256-((f.p2y==f.p4y && f.p2y==f.p3y)?(1/256):0))
 						]);
 						if (f.flags&0x02 && (urlvars["ds"][0]!="y")) {	//doubleside
 							var face=new THREE.Face3(f.p3,f.p2,f.p4);
@@ -459,14 +460,14 @@
 							geom.faces.push(face);
 							geom.faceVertexUvs[0].push([
 							  new THREE.Vector2(f.p3x/8192+(f.textmap&0x1F)*0.03125, 1-f.p3y/256),
-							  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256),
+							  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256-((f.p2y==f.p4y && f.p2y==f.p3y)?(1/256):0)),
 							  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256)
 							]);
 							face=new THREE.Face3(f.p2,f.p1,f.p4);
 							face.vertexColors[0] = points[f.p2].color; face.vertexColors[1] = points[f.p1].color; face.vertexColors[2] = points[f.p4].color;
 							geom.faces.push(face);
 							geom.faceVertexUvs[0].push([
-							  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256),
+							  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256-((f.p2y==f.p4y && f.p2y==f.p3y)?(1/256):0)),
 							  new THREE.Vector2(f.p1x/8192+(f.textmap&0x1F)*0.03125, 1-f.p1y/256),
 							  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256)
 							]);
