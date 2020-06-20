@@ -1,12 +1,13 @@
 # Travellers Tales PSX Collision & GFX viewer
 
-Travellers Tales videogame company realeased 5 PSX videogames that uses the same 3D engine with minor improvements on each title:
+Travellers Tales videogame company realeased 7 PSX videogames that uses the same 3D engine adding some engine changes/improvements until TS2:
 
 - **Rascal**: This is the first PSX title developed by Travellers Tales. It is said to be the worst PSX game ever made. This was due to the use of rotational control, and TT team beeing focused on the development of Sonic R.
 - **Bugs Life**: Videogame based on the same title Pixar movie. It (finally) uses directional controls.
 - **Toy Story 2**: Videogame based on the same title Pixar movie. It is the best of the 5 PSX videogames with lots of games sold and a rating of 9.1/10 (Metacritic)
-- **Muppet Race Mania**: A racing game with not very good ratings
-- **Buzz Lightyear of Star Command** (BLSC): This game is based on the animated series of the same name. This game was probably made due to the success of the previous game.
+- **Toy Story Racer & Muppet Race Mania**: Two nearly identical racing games with multiplayer support.
+- **Weakest Link**: Simple QA videogame based on the same name TV show.
+- **Buzz Lightyear of Star Command** (BLSC): This game is based on the animated series of the same name. This game was probably made due to the success of the TS2 game.
 
 ## How to use
 You can try the online version of the tool [here](https://priceless-pike-6c8ff8.netlify.com/ "here").
@@ -22,7 +23,7 @@ The controls are the following:
 # Travellers Tales PSX Collision viewer
 
 The collision viewer core is in *viewer.html*  and you should pass it a *file* parameter with the name of the file inside the *SSTATES* folder and a *game* parameter with the game wich correspond the savestate. You have links with this parameters in *index.html*, no need to type them manually.
-When you open the viewer (assuming correct parameters) you will see a black screen, that will change when the file loads. Camera will spawn at [0,0,0] coordinates, so if you don't know where you are, look arround and move. MRM is the only game not present in collision viewer since it's the only not-platform game and aparently uses a diferent collision system.
+When you open the viewer (assuming correct parameters) you will see a black screen, that will change when the file loads. Camera will spawn at [0,0,0] coordinates, so if you don't know where you are, look arround and move. **TSR/MRM** are not present in collision viewer since they aparently use a diferent collision system due to racing nature, and **Weakest Link** just doesn't have collision data.
 
 ## Color guide
 Floor meshes are walkable, but they also act like walls
@@ -121,19 +122,19 @@ Both size scenario items start with 32bit xyz positions followed by 16bit xyz ro
 32 bit scenario elements has 16bit xyz scale components following the rotation. **This scenario data structure is identical for all games**.
 
 3D objects starts with a 32bit vertex element count (that is negative for special material).
-- **TS2/MRM/BLSC**: The following vertex array elements are made of 16bit xyz positions and a 16bit rgb15 vertex color (8byte).
+- **TS2/TSR/MRM/WL/BLSC**: The following vertex array elements are made of 16bit xyz positions and a 16bit rgb15 vertex color (8byte).
 - **BL**: The following vertex array elements are made of 16bit xyz positions and a 4th padding 16 bit value with no use, followed by 3 bytes for 24bit rgb24 vertex color and a last byte for... flags or internal engine use (12 byte).
 
-Following the vertex array, there's a faces flag, palette & vram page & pal type byte, and faces count. At the end of the faces array you can find another faces flag, Palette & vram page & pal type, and count, or just 0xFFFF meaning no more faces. There are lot of 1bit flags like translucency, doublesided, textured, quads,... the faces array items are made of a 4 item list of 8bit vertex index (only 3 used for triangles). For textured elements is followed by a list of 4 8bit xy positions of face vertex UVs. *Note: if face is a triangle, in TS2 you still have 4 positions and 4UVs beeing 1 unused. In BL, you have instead 3 positions and 3UV, meaning a smaller face data size*.
+Following the vertex array, there's a faces flag, palette & vram page & pal type byte, and faces count. At the end of the faces array you can find another faces flag, Palette & vram page & pal type, and count, or just 0xFFFF meaning no more faces. There are lot of 1bit flags like translucency, doublesided, textured, quads,... the faces array items are made of a 4 item list of 8bit vertex index (only 3 used for triangles). For textured elements is followed by a list of 4 8bit xy positions of face vertex UVs. *Note: if face is a triangle, in TS2 and later games you still have 4 positions and 4UVs beeing 1 unused. In BL, you have instead 3 positions and 3UV, meaning a smaller face data size*.
 
-BLSC does use of PAL4 and PAL8 textures, while TS2/MRM and BL only uses PAL4 textures except background (TS2/MRM and BL engine has support for using PAL8 textures, but not used).
+Engine has support for using PAL8 textures, but it's not used on all games (ex: TS2).
 
 ## Engine diferences
-- Like with collision data, TS2 and BLSC engines are almost identical, and code used for reading GFX data is the same. The same with MRM despite using a diferent collision engine.
-- Color LUT and VRAM page combinations are in the same data structure for TS2/MRM/BLSC, while BL has 2 diferent data structures, one for VRAM pages, and color LUTs.
-- Face data uses 8byte vertex numbers for TS2/MRM/BLSC while it uses 16byte vertex pointers in BL.
-- Despite diferences in vertex and face data, BL and TS2/MRM/BLSC engines still has lots of thing in common like the face flags, which are the same, Palette & vram page & pal type also works the same way, special material using negative vertex count,... More surprisingly, sprite data structure is equal, and continues using 24bit vertex color data in TS2/MRM/BLSC.
-- Background size for TS2 is always the same. In BLSC background height is variable, and for BL both height and width are variable. MRM doesn't have textured backgrounds.
+- MRM/TSR racing games have a diferent collision engine
+- Color LUT and VRAM page combinations are in the same data structure for TS2/TSR/MRM/WL/BLSC, while BL has 2 diferent data structures, one for VRAM pages, and color LUTs.
+- Face data uses 8byte vertex numbers for TS2/TSR/MRM/WL/BLSC while it uses 16byte vertex pointers in BL.
+- Despite diferences in vertex and face data, BL and TS2/TSR/MRM/WL/BLSC engines still has lots of thing in common like the face flags, which are the same, Palette & vram page & pal type also works the same way, special material using negative vertex count,... More surprisingly, sprite data structure is equal, and continues using 24bit vertex color data in TS2/TSR/MRM/WL/BLSC.
+- Background size for TS2 is always the same. In BLSC background height is variable, and for BL both height and width are variable. TSR, MRM, and WL doesn't have textured backgrounds.
 
 
 ## GFX viewer URL Parameters
@@ -145,6 +146,7 @@ BLSC does use of PAL4 and PAL8 textures, while TS2/MRM and BL only uses PAL4 tex
 - **gfxcount**: number of scene elements to be rendered.
 - **bkgx**: background vertical size for BL
 - **bkgy**: background vertical size for BL and BLSC
+- **th**: number of texture pages containing thumbs (not always needed)
 
 # Files in TT PSX games
 Game ISOs from Travellers Tales games contains the following file formats:
