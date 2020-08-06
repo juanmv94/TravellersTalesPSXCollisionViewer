@@ -1,6 +1,6 @@
 # Travellers Tales PSX Collision & GFX viewer
 
-Travellers Tales videogame company realeased 7 PSX videogames that uses the same 3D engine adding some engine changes/improvements until TS2:
+Travellers Tales videogame company realeased 7 PSX videogames that uses the same 3D engine designed by Dave Dootson adding some engine changes/improvements until TS2:
 
 - **Rascal**: This is the first PSX title developed by Travellers Tales. It is said to be the worst PSX game ever made. This was due to the use of rotational control, and TT team beeing focused on the development of Sonic R.
 - **Bugs Life**: Videogame based on the same title Pixar movie. It (finally) uses directional controls.
@@ -68,7 +68,7 @@ The colors used for the category of object collision meshes are the following:
 They are all **white**
 
 ## The collision engine
-The 3D engine designed by Dave Deus has a lot of things in common for collision of the 4 games:
+The 3D engine has a lot of things in common for collision of the 4 games:
 - it uses diferent collision "objects" that can be placed at a world position. These objects can be repeated at diferent positions, but they can't be rotated.
 - The world collision data is an array of a fixed size structure with the object data, including position, category, and a pointer to it's collision meshes.
 - Colision polygons are single sided, and you'll see them filled only if you are looking to the colision side, otherwise, you will only see the wireframe.

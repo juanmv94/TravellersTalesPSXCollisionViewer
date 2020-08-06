@@ -1,0 +1,3 @@
+[submodule "util/RAWfiles/RNC_ProPack"]
+	path = util/RAWfiles/RNC_ProPack
+	url = https://github.com/tobiasvl/rnc_propack
