@@ -1,0 +1,353 @@
+<html>
+	<head>
+		<title>Travellers Tales PSX gfx use checker by @Juanmv94</title>
+	</head>
+	<body>
+		<canvas id="myCanvas" width="1536" height="256" style="border:2px solid #d3d3d3;"></canvas>
+		<br/><br/>
+		<canvas id="myCanvas2" width="1536" height="256" style="border:2px solid #d3d3d3;"></canvas>
+		<script>
+			var urlvars = {};
+			var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+				urlvars[key] = value;
+			});
+			var games = {
+				"blsc": {"clut": addtopos(0x800E2518),"thumbsp": 0, "getgfxo": getgfxots2},
+				"ts2": {"clut": addtopos(0x800CD200),"thumbsp": 4, "getgfxo": getgfxots2},
+				"ts2demo": {"clut": addtopos(0x800BCCE0),"thumbsp": 4, "getgfxo": getgfxots2},
+				"ts2proto": {"clut": addtopos(0x800B58A8),"thumbsp": 4, "getgfxo": getgfxots2},
+				"bugs": {"clutpag": addtopos(0x800910B0), "clutpal": addtopos(0x800A7DD8), "getgfxo": getgfxobugs},
+				"bugsdemo": {"clutpag": addtopos(0x80094740),"clutpal": addtopos(0x800a6be8),"thumbsp": 0, "getgfxo": getgfxobugs},
+				"wl": {"clut": addtopos(0x800AAAB8),"thumbsp": 0, "getgfxo": getgfxots2},
+				"tsr": {"clut": addtopos(0x800DA610),"thumbsp": 4, "getgfxo": getgfxots2},
+				"mrm": {"clut": addtopos(0x800DFF00),"thumbsp": 4, "getgfxo": getgfxots2}
+			};
+			
+			var arrayBuffer;
+			var oReq = new XMLHttpRequest();
+			oReq.open("GET", "SSTATES/"+urlvars["file"], true);
+			oReq.responseType = "arraybuffer";
+			oReq.onload = function (oEvent) {
+			  arrayBuffer = oReq.response; // Note: not oReq.responseText
+			  if (arrayBuffer) {
+			    array8u = new Uint8Array(arrayBuffer.slice(2));
+				array16 = new Int16Array(arrayBuffer.slice(2));
+				array16u = new Uint16Array(arrayBuffer.slice(2));
+				array32 = new Int32Array(arrayBuffer.slice(2));
+				array32u = new Uint32Array(arrayBuffer.slice(2));
+				vram = new Uint16Array(arrayBuffer.slice(2048*1254+991,2048*1254+991+(2048*256)));
+				loaded();
+			  }
+			};
+			oReq.send(null);
+			
+			function postopsxe(pos) {
+				return (pos+11056360).toString(16);
+			}
+			
+			function psxetopos(psxe) {
+				return psxe-11056360;
+			}
+			
+			function postoadd(add) {
+				return (add+2147483208).toString(16);
+			}
+			
+			function addtopos(add) {
+				return add-2147483208;
+			}
+
+			function colorcurve(c) {		//RGB color intensity in PSX is not linear! in the range 0-31 the middle is about 8 (nopsx documentation)
+				return Math.sin(c/31*Math.PI/2)*255;
+			}
+			
+			var nopal=[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]];
+			function getPalTextures() {		//Gets the pal4 16color level textures
+				function getpal(x,y) {	//returns palette for each pal4 texture pixel
+					if (n<games[urlvars["game"]].thumbsp) {
+							if (y<32 && (x%64)<8) return nopal;//return palspage[Math.floor(y/8)*4+Math.floor(x%64/2)];
+							if (y<64 && (x%64)<16) return nopal;//return palspage[Math.floor(y/16)*4+Math.floor(x%64/4)];
+							if (y<128 && (x%64)<32) return nopal;//return palspage[Math.floor(y/32)*4+Math.floor(x%64/8)];
+					}
+					return palspage[Math.floor(y/64)*4+Math.floor(x%64/16)];
+				}
+				textureba = ctx.createImageData(8192, 256);
+				var palspage,vrampage;
+				var lut=games[urlvars["game"]].clut, lutpal, lutpag;
+				if (!lut) {	//BL has PAL LUT and VRAM page at two diferent addresses 
+					lutpal=games[urlvars["game"]].clutpal; lutpag=games[urlvars["game"]].clutpag;
+				}
+				for (var n=0;n<32;n++) {
+					vrampage=array16u[(lut||lutpag)>>1]&0x7F;
+					var pal8=array16u[(lut||lutpag)>>1]&0x80;
+					if (vrampage>15) {if (lut) lut+=16; else {lutpag+=2; lutpal+=2} continue;}
+					var palp=array16u[(lutpal||(lut+2))>>1]*16;
+					if (!pal8) {
+						palspage=new Array(16);
+						for (var j=0;j<16;j++) {
+							var pal=new Array(16);
+							for (var i=0;i<16;i++) {
+								var color=vram[palp++];
+								if (!color) pal[i]=[0,0,0,0];
+								else pal[i]=[colorcurve(color&31),colorcurve((color>>5)&31),colorcurve((color>>10)&31),255];
+							}
+							palspage[j]=pal;
+						}
+						for (let y=0;y<256;y++) {
+							var imarrp=n*1024+8192*4*y;
+							var vrp=vrampage*64+1024*y;
+							for (let x=0;x<64;x++) {
+								var pal=getpal(x,y);
+								var c1=vram[vrp]&15,c2=(vram[vrp]>>4)&15,c3=(vram[vrp]>>8)&15,c4=(vram[vrp]>>12)&15;
+								for (let i=0;i<4;i++) textureba.data[imarrp++]=pal[c1][i];
+								for (let i=0;i<4;i++) textureba.data[imarrp++]=pal[c2][i];
+								for (let i=0;i<4;i++) textureba.data[imarrp++]=pal[c3][i];
+								for (let i=0;i<4;i++) textureba.data[imarrp++]=pal[c4][i];
+								vrp++;
+							}
+						}
+					} else {
+						var pal=new Array(256);
+						for (var i=0;i<256;i++) {
+							var color=vram[palp++];
+							if (!color) pal[i]=[0,0,0,10];
+							else pal[i]=[colorcurve(color&31),colorcurve((color>>5)&31),colorcurve((color>>10)&31),255];
+						}
+						for (let y=0;y<256;y++) {
+							var imarrp=n*1024+8192*4*y;
+							var vrp=vrampage*64+1024*y;
+							for (let x=0;x<128;x++) {
+								var c1=vram[vrp]&255,c2=(vram[vrp]>>8)&255;
+								for (let i=0;i<4;i++) textureba.data[imarrp++]=pal[c1][i];
+								for (let i=0;i<4;i++) textureba.data[imarrp++]=pal[c2][i];
+								vrp++;
+							}
+						}
+					}
+					if (lut) lut+=16; else {lutpag+=2; lutpal+=2}
+				}
+				return textureba;
+			}
+			
+			function getscenario(pos) {		//Process the full level scenario
+				while(true) {
+					var elsize=(array8u[pos+23]==0x80)?24:32;
+					if (elsize==32 && array8u[pos+elsize-1]!=0x80) {
+						//console.log("no more scenario elements from index "+i);
+						break;
+					}
+					games[urlvars["game"]].getgfxo(addtopos(array32u[pos+elsize-4>>2]));
+					pos+=elsize;
+				}
+			}
+			
+			function getgfxobugs(pos) {
+				var npoints=Math.abs(array32[pos>>2]);
+				var specialmat=(array32[pos>>2]<0);		//Maybe reflective? not implemented
+				if (gfxoissprite(pos) && !specialmat) return getsprite(pos);
+				if (npoints>4096) {
+					console.log("object points too long! 0x"+postopsxe(pos));
+					return null;
+				}
+				if (array32u[(pos>>2)+npoints*3+1]==1) {
+					console.log("sprite scene object not implemented! 0x"+postopsxe(pos));	//ex: bugs lvl1 sceneobj 0xbf3ad8 (wall at finish)
+					return null;
+				}
+				pos+=4;
+				var points=new Array(npoints);
+				
+				for (let i=0; i<npoints; i++) {
+					var point={};
+					point.x=array16[pos>>1]; pos+=2;
+					point.y=array16[pos>>1]; pos+=2;
+					point.z=array16[pos>>1]; pos+=2;
+					point.padding=array16[pos>>1]; pos+=2;
+					/*point.color=new THREE.Color(Math.sin(array8u[pos]/255*Math.PI/2),Math.sin(array8u[pos+1]/255*Math.PI/2),Math.sin(array8u[pos+2]/255*Math.PI/2));*/ pos+=3;
+					point.flag=array8u[pos++];
+					points[i]=point;
+				}
+				//console.log(points);
+				if (specialmat) pos+=(npoints)*6+(npoints%2)*2;	//special mat data skip
+				var facestex=[],facesuntex=[];
+				while (array16u[pos>>1]!=0xFFFF) {
+					var flags=array8u[pos++];
+					var textmap=array8u[pos++];
+					var n=array16u[pos>>1]&0xFF;
+					if (array8u[pos+1]>=0xF0) {
+						console.log("object faces unknown val at 0x"+postopsxe(pos)+". "+(facestex.length+facesuntex.length)+" faces were read.");
+						return null;
+					}
+					pos+=2;
+					if (flags&16) for (let i=0; i<n; i++) {	//untextured
+						var face={};
+						face.flags=flags;
+						face.textmap=textmap;
+						face.p1=array16u[pos>>1]/12; pos+=2;
+						face.p2=array16u[pos>>1]/12; pos+=2;
+						face.p3=array16u[pos>>1]/12; pos+=2;
+						if (!(flags&1)) {face.p4=array16u[pos>>1]/12; pos+=2;}	//triangles
+						facesuntex.push(face);
+					} else for (let i=0; i<n; i++) { //textured
+						var face={};
+						face.flags=flags;
+						face.textmap=textmap;
+						face.p1=array16u[pos>>1]/12; pos+=2;
+						face.p2=array16u[pos>>1]/12; pos+=2;
+						face.p3=array16u[pos>>1]/12; pos+=2;
+						if (!(flags&1)) {face.p4=array16u[pos>>1]/12; pos+=2;}	//triangles
+						if (!(flags&1)) {face.p1x=array8u[pos++]; face.p1y=array8u[pos++]; }
+						face.p2x=array8u[pos++]; face.p2y=array8u[pos++];
+						face.p3x=array8u[pos++]; face.p3y=array8u[pos++];
+						face.p4x=array8u[pos++]; face.p4y=array8u[pos++];
+						facestex.push(face);
+					}
+					
+				}
+				//console.log(facestex); console.log(facesuntex);
+				return processVertexAndFaces(points,facestex,facesuntex,specialmat);
+			}
+			
+			function getgfxots2(pos) {
+				var npoints=Math.abs(array32[pos>>2]);
+				var specialmat=(array32[pos>>2]<0);		//Maybe reflective? not implemented
+				if (npoints>255) {
+					console.log("object points too long! 0x"+postopsxe(pos));
+					return null;
+				}
+				if (gfxoissprite(pos) && !specialmat) return getsprite(pos);
+				pos+=4;
+				var points=new Array(npoints);
+				
+				/*function psxrgb(color) {	//returns the THREE color from a 16bit point color
+					return new THREE.Color(Math.sin(((color>>10)&31)/62*Math.PI),Math.sin(((color>>5)&31)/62*Math.PI),Math.sin((color&31)/62*Math.PI));
+				}*/
+				
+				for (let i=0; i<npoints; i++) {
+					var point={};
+					point.x=array16[pos>>1]; pos+=2;
+					point.y=array16[pos>>1]; pos+=2;
+					point.z=array16[pos>>1]; pos+=2;
+					/*point.color=psxrgb(array16[pos>>1]);*/ pos+=2;
+					points[i]=point;
+				}
+				//console.log(points);
+				if (specialmat) pos+=(npoints+1)*4;	//special mat data skip
+				var facestex=[],facesuntex=[];
+				while (array16u[pos>>1]!=0xFFFF) {
+					var flags=array8u[pos++];
+					var textmap=array8u[pos++];
+					var n=array16u[pos>>1]&0xFF;
+					if (array8u[pos+1]>=0xF0) {
+						console.log("object faces unknown val at 0x"+postopsxe(pos)+". "+(facestex.length+facesuntex.length)+" faces were read.");
+						return null;
+					}
+					pos+=2;
+					if (flags&16) for (let i=0; i<n; i++) {	//untextured
+						var face={};
+						face.flags=flags;
+						face.textmap=textmap;
+						face.p1=array8u[pos++];
+						face.p2=array8u[pos++];
+						face.p3=array8u[pos++];
+						face.p4=array8u[pos++];
+						facesuntex.push(face);
+					} else for (let i=0; i<n; i++) { //textured
+						var face={};
+						face.flags=flags;
+						face.textmap=textmap;
+						face.p1=array8u[pos++];
+						face.p2=array8u[pos++];
+						face.p3=array8u[pos++];
+						face.p4=array8u[pos++];
+						face.p1x=array8u[pos++]; face.p1y=array8u[pos++];
+						face.p2x=array8u[pos++]; face.p2y=array8u[pos++];
+						face.p3x=array8u[pos++]; face.p3y=array8u[pos++];
+						face.p4x=array8u[pos++]; face.p4y=array8u[pos++];
+						facestex.push(face);
+					}
+					
+				}
+				//console.log(facestex); console.log(facesuntex);
+				return processVertexAndFaces(points,facestex,facesuntex,specialmat);
+			}
+			
+			function gfxoissprite(pos) {
+				const maxspp=4;
+				var nsprites=array32u[pos>>2];
+				pos+=12*nsprites+4;
+				for (let i=0;i<nsprites;i++) {
+					var count=array32u[pos>>2];
+					if (count==0 || count>maxspp) return false;
+					pos+=4+count*44;
+				}
+				return true;
+			}
+			
+			function getsprite(pos) {
+				var nsprites=array32[pos>>2];
+				pos+=4;
+				//var sobjs=new THREE.Group();
+				var sprs=new Array(nsprites);
+				for (let i=0;i<nsprites;i++) {sprs[i]={x:array32[pos>>2], y:array32[(pos>>2)+1], z:array32[(pos>>2)+2]};pos+=12;}
+				for (let i=0;i<nsprites;i++) {
+					var count=array32[pos>>2];
+					pos+=4;
+					for (let j=0;j<count;j++) {
+						var face={p1:0, p2:1, p3:2 ,p4:3};
+						var vertex=[{},{},{},{}];
+						vertex[0].x=array16[pos>>1]; pos+=2; vertex[0].y=array16[pos>>1]; pos+=2; vertex[0].z=0;
+						vertex[1].x=array16[pos>>1]; pos+=2; vertex[1].y=array16[pos>>1]; pos+=2; vertex[1].z=0;
+						vertex[2].x=array16[pos>>1]; pos+=2; vertex[2].y=array16[pos>>1]; pos+=2; vertex[2].z=0;
+						vertex[3].x=array16[pos>>1]; pos+=2; vertex[3].y=array16[pos>>1]; pos+=2; vertex[3].z=0;
+						face.pad=array16[pos>>1]; pos+=2;
+						face.textmap=array16[pos>>1]&0x1F; face.flags=array16[pos>>1]&0xE0|0x02; pos+=2;
+						face.p1x=array8u[pos++]; face.p1y=array8u[pos++];
+						face.p2x=array8u[pos++]; face.p2y=array8u[pos++];
+						face.p3x=array8u[pos++]; face.p3y=array8u[pos++];
+						face.p4x=array8u[pos++]; face.p4y=array8u[pos++];
+						/*vertex[0].color=new THREE.Color(Math.sin(array8u[pos]/255*Math.PI/2),Math.sin(array8u[pos+1]/255*Math.PI/2),Math.sin(array8u[pos+2]/255*Math.PI/2));*/ pos+=4;
+						/*vertex[1].color=new THREE.Color(Math.sin(array8u[pos]/255*Math.PI/2),Math.sin(array8u[pos+1]/255*Math.PI/2),Math.sin(array8u[pos+2]/255*Math.PI/2));*/ pos+=4;
+						/*vertex[2].color=new THREE.Color(Math.sin(array8u[pos]/255*Math.PI/2),Math.sin(array8u[pos+1]/255*Math.PI/2),Math.sin(array8u[pos+2]/255*Math.PI/2));*/ pos+=4;
+						/*vertex[3].color=new THREE.Color(Math.sin(array8u[pos]/255*Math.PI/2),Math.sin(array8u[pos+1]/255*Math.PI/2),Math.sin(array8u[pos+2]/255*Math.PI/2));*/ pos+=4;
+						var o=processVertexAndFaces(vertex,[face],[],false);
+						//o.position.x=sprs[i].x; o.position.y=sprs[i].y; o.position.z=sprs[i].z;
+						//sobjs.add(o);
+					}
+				}
+				//sprites.push(sobjs);
+				//return sobjs;
+			}
+			function processVertexAndFaces(points,facestex,facesuntex,specialmat) {	//Same processing for TS2, BLSC, and Bugs
+				facestex.forEach(f=>{
+					ctx.beginPath();
+					if (f.flags&0x01) {		//triangles
+						ctx.moveTo(f.p2x+(f.textmap&0x1F)*256, f.p2y);
+						ctx.lineTo(f.p3x+(f.textmap&0x1F)*256, f.p3y);
+						ctx.lineTo(f.p4x+(f.textmap&0x1F)*256, f.p4y);
+					}
+					else {		//quads
+						ctx.moveTo(f.p1x+(f.textmap&0x1F)*256, f.p1y);
+						ctx.lineTo(f.p2x+(f.textmap&0x1F)*256+1, f.p2y);
+						ctx.lineTo(f.p3x+(f.textmap&0x1F)*256, f.p3y+1);
+						ctx.lineTo(f.p4x+(f.textmap&0x1F)*256+1, f.p4y+1);
+					}
+					ctx.closePath();
+					ctx.fill();
+				});
+			}
+			
+			function loaded() {
+				c = document.getElementById("myCanvas");
+				ctx = c.getContext("2d");
+				texture = getPalTextures();
+				ctx.putImageData(texture,0,0);
+				ctx.fillStyle = '#f00f';
+				getscenario(psxetopos(parseInt(urlvars["gfxpointer"])));
+				
+				c2 = document.getElementById("myCanvas2");
+				ctx2 = c2.getContext("2d");
+				ctx2.putImageData(texture,0,0);
+			}
+		</script>
+	</body>
+</html>

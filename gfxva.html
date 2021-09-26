@@ -17,12 +17,12 @@
 			var games = {
 				"blsc": {"clut": addtopos(0x800E2518),"bkgd": 3072, "bkgx": 256, "bkgy": parseInt(urlvars["bkgy"]),"thumbsp": 0, "getgfxo": getgfxots2},
 				"ts2": {"clut": addtopos(0x800CD200),"bkgd": 3072, "bkgx": 192, "bkgy":128,"thumbsp": 4, "getgfxo": getgfxots2},
-				"ts2demo": {"clut": addtopos(0x800BCCE0),"bkgd": 3072, "bkgx": 192, "bkgy":128,"thumbsp": urlvars["th"] || 4, "getgfxo": getgfxots2},
-				"ts2proto": {"clut": addtopos(0x800B58A8),"bkgd": 3072, "bkgx": 192, "bkgy":128,"thumbsp": urlvars["th"] || 4, "getgfxo": getgfxots2},
+				"ts2demo": {"clut": addtopos(0x800BCCE0),"bkgd": 3072, "bkgx": 192, "bkgy":128,"thumbsp": 4, "getgfxo": getgfxots2},
+				"ts2proto": {"clut": addtopos(0x800B58A8),"bkgd": 3072, "bkgx": 192, "bkgy":128,"thumbsp": 4, "getgfxo": getgfxots2},
 				"bugs": {"clutpag": addtopos(0x800910B0),"bkgd": 1280, "clutpal": addtopos(0x800A7DD8),"bkgx": parseInt(urlvars["bkgx"]), "bkgy": parseInt(urlvars["bkgy"]),"thumbsp": 0, "getgfxo": getgfxobugs},
 				"bugsdemo": {"clutpag": addtopos(0x80094740),"bkgd": 1536, "clutpal": addtopos(0x800a6be8),"bkgx": parseInt(urlvars["bkgx"]), "bkgy": parseInt(urlvars["bkgy"]),"thumbsp": 0, "getgfxo": getgfxobugs},
 				"wl": {"clut": addtopos(0x800AAAB8),"bkgd": 3072, "bkgx": 1, "bkgy": 1,"thumbsp": 0, "getgfxo": getgfxots2},
-				"tsr": {"clut": addtopos(0x800DA610),"bkgd": 3072, "bkgx": 1, "bkgy": 1,"thumbsp": parseInt(urlvars["th"]), "getgfxo": getgfxots2},
+				"tsr": {"clut": addtopos(0x800DA610),"bkgd": 3072, "bkgx": 1, "bkgy": 1,"thumbsp": 4, "getgfxo": getgfxots2},
 				"mrm": {"clut": addtopos(0x800DFF00),"bkgd": 3072, "bkgx": 1, "bkgy": 1,"thumbsp": 4, "getgfxo": getgfxots2}
 			};
 		
@@ -123,7 +123,7 @@
 			
 			function getPalTextures() {		//Gets the pal4 16color level textures
 				function getpal(x,y) {	//returns palette for each pal4 texture pixel
-					if (vrampage<games[urlvars["game"]].thumbsp) {
+					if (n<games[urlvars["game"]].thumbsp) {
 							if (y<32 && (x%64)<8) return palspage[Math.floor(y/8)*4+Math.floor(x%64/2)];
 							if (y<64 && (x%64)<16) return palspage[Math.floor(y/16)*4+Math.floor(x%64/4)];
 							if (y<128 && (x%64)<32) return palspage[Math.floor(y/32)*4+Math.floor(x%64/8)];
@@ -138,7 +138,7 @@
 				if (!lut) {	//BL has PAL LUT and VRAM page at two diferent addresses 
 					lutpal=games[urlvars["game"]].clutpal; lutpag=games[urlvars["game"]].clutpag;
 				}
-				for (let n=0;n<32;n++) {
+				for (var n=0;n<32;n++) {
 					vrampage=array16u[(lut||lutpag)>>1]&0x7F;
 					var pal8=array16u[(lut||lutpag)>>1]&0x80;
 					if (vrampage>15) {if (lut) lut+=16; else {lutpag+=2; lutpal+=2} continue;}
