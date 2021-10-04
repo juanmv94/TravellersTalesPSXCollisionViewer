@@ -1,0 +1,327 @@
+<html>
+	<head>
+		<title>Travellers Tales PSX entity GFX viewer by @Juanmv94</title>
+		<style>
+			body { margin: 0; font-family: Arial;}
+			canvas { width: 100%; height: 100% }
+			button {position: fixed; width: 140px; height: 26px; margin: 4px; background-color: #FFFFFF77; color: black; border: 2px solid #00000077; border-radius: 10px;}
+			div {position: fixed; margin: 4px; right:0;}
+		</style>
+	</head>
+	<body>
+		<button onclick="document.querySelector('input').click()">Load .ALL / .MDL</button>
+		<input type="file" accept=".ALL,.MDL" style="display:none">
+		<div>
+		<input type="radio" id="html" name="mode" value="Textured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=false;x.map=texture;x.needsUpdate=true;});" checked><label for="Textured">Textured</label>
+		<input type="radio" id="html" name="mode" value="Untextured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=false;x.map=null;x.needsUpdate=true;});"><label for="Untextured">Untextured</label>
+		<input type="radio" id="html" name="mode" value="Wireframe" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=true;x.map=null;x.needsUpdate=true;});"><label for="Wireframe">Wireframe</label>
+		</div>
+		<script src="three.min.js"></script>
+		<script src="FlyControls.js"></script>
+		<script>
+			var urlvars = {};
+			var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+				urlvars[key] = value;
+			});
+			var games = {
+				"blsc": {"clut": addtopos(0x800E2518),"thumbsp": 0,"newengine": true},
+				"ts2": {"clut": addtopos(0x800CD200),"thumbsp": 4,"newengine": false},
+				"ts2demo": {"clut": addtopos(0x800BCCE0),"thumbsp": 4, "newengine": false},
+				"ts2proto": {"clut": addtopos(0x800B58A8),"thumbsp": 4, "newengine": false},
+				"bugs": {"clutpag": addtopos(0x800910B0), "clutpal": addtopos(0x800A7DD8),"thumbsp": 0, "newengine": false},
+				"bugsdemo": {"clutpag": addtopos(0x80094740),"clutpal": addtopos(0x800a6be8),"thumbsp": 0, "newengine": false},
+				"wl": {"clut": addtopos(0x800AAAB8),"thumbsp": 0, "newengine": true},
+				"tsr": {"clut": addtopos(0x800DA610),"thumbsp": 4, "newengine": true},
+				"mrm": {"clut": addtopos(0x800DFF00),"thumbsp": 4, "newengine": true}
+			};
+		
+			var mult=urlvars["mult"]||0.25;
+			
+			var arrayBuffer;
+			var oReq = new XMLHttpRequest();
+			oReq.open("GET", "SSTATES/"+urlvars["file"], true);
+			oReq.responseType = "arraybuffer";
+			oReq.onload = function (oEvent) {
+			  arrayBuffer = oReq.response; // Note: not oReq.responseText
+			  if (arrayBuffer) {
+			    array8u = new Uint8Array(arrayBuffer.slice(2));
+				array16 = new Int16Array(arrayBuffer.slice(2));
+				array16u = new Uint16Array(arrayBuffer.slice(2));
+				array32 = new Int32Array(arrayBuffer.slice(2));
+				array32u = new Uint32Array(arrayBuffer.slice(2));
+				vram = new Uint16Array(arrayBuffer.slice(2048*1254+991,2048*1254+991+(2048*256)));
+				loaded();
+			  }
+			};
+			oReq.send(null);
+			
+			function postopsxe(pos) {
+				return (pos+11056360).toString(16);
+			}
+			
+			function psxetopos(psxe) {
+				return psxe-11056360;
+			}
+			
+			function postoadd(add) {
+				return (add+2147483208).toString(16);
+			}
+			
+			function addtopos(add) {
+				return add-2147483208;
+			}
+			
+			var scene = new THREE.Scene();
+			scene.background = new THREE.Color(0x7777ff);
+			var camera = new THREE.PerspectiveCamera( 50, window.innerWidth/window.innerHeight, 0.1, 10000 );
+			
+			var light = new THREE.HemisphereLight( 0xffffff, 0xc0c0c0, 0.95 );
+			light.position.set( 0.5, 0.5, 0.5 );
+			scene.add( light );
+
+			var renderer = new THREE.WebGLRenderer({antialias: false});
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+			
+			/*function onDocumentMouseDown( event ) 
+			{
+				if (event.button!=0) {
+					
+				}
+				var raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2(), intersects;
+				mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+				mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+				raycaster.setFromCamera(mouse, camera);
+				intersects = raycaster.intersectObjects(scene.children, true);
+				if (intersects.length > 0){
+					var obj=intersects[0].object;
+					if (obj.parent.ba) console.log(obj.parent.ba);
+					else if (obj.parent.parent) console.log(obj.parent.parent.ba);
+				} else {
+					
+				}
+			}*/
+			
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			function colorcurve(c) {		//RGB color intensity in PSX is not linear! in the range 0-31 the middle is about 8 (nopsx documentation)
+				return Math.sin(c/31*Math.PI/2)*255;
+			}
+			
+			function getPalTextures() {		//Gets the pal4 16color level textures
+				function getpal(x,y) {	//returns palette for each pal4 texture pixel
+					if (n<games[urlvars["game"]].thumbsp) {
+							if (y<32 && (x%64)<8) return palspage[Math.floor(y/8)*4+Math.floor(x%64/2)];
+							if (y<64 && (x%64)<16) return palspage[Math.floor(y/16)*4+Math.floor(x%64/4)];
+							if (y<128 && (x%64)<32) return palspage[Math.floor(y/32)*4+Math.floor(x%64/8)];
+					}
+					return palspage[Math.floor(y/64)*4+Math.floor(x%64/16)];
+				}
+			
+				//const pals16=768+193*1024;
+				textureba = new Uint8Array(8192*256*4);
+				var palspage,vrampage;
+				var lut=games[urlvars["game"]].clut, lutpal, lutpag;
+				if (!lut) {	//BL has PAL LUT and VRAM page at two diferent addresses 
+					lutpal=games[urlvars["game"]].clutpal; lutpag=games[urlvars["game"]].clutpag;
+				}
+				for (var n=0;n<32;n++) {
+					vrampage=array16u[(lut||lutpag)>>1]&0x7F;
+					var pal8=array16u[(lut||lutpag)>>1]&0x80;
+					if (vrampage>15) {if (lut) lut+=16; else {lutpag+=2; lutpal+=2} continue;}
+					var palp=array16u[(lutpal||(lut+2))>>1]*16;
+					if (!pal8) {
+						palspage=new Array(16);
+						for (var j=0;j<16;j++) {
+							var pal=new Array(16);
+							for (var i=0;i<16;i++) {
+								var color=vram[palp++];
+								if (!color) pal[i]=[0,0,0,10];
+								else pal[i]=[colorcurve(color&31),colorcurve((color>>5)&31),colorcurve((color>>10)&31),255];
+							}
+							palspage[j]=pal;
+						}
+						for (let y=0;y<256;y++) {
+							var imarrp=n*1024+8192*4*y;
+							var vrp=vrampage*64+1024*y;
+							for (let x=0;x<64;x++) {
+								var pal=getpal(x,y);
+								var c1=vram[vrp]&15,c2=(vram[vrp]>>4)&15,c3=(vram[vrp]>>8)&15,c4=(vram[vrp]>>12)&15;
+								for (let i=0;i<4;i++) textureba[imarrp++]=pal[c1][i];
+								for (let i=0;i<4;i++) textureba[imarrp++]=pal[c2][i];
+								for (let i=0;i<4;i++) textureba[imarrp++]=pal[c3][i];
+								for (let i=0;i<4;i++) textureba[imarrp++]=pal[c4][i];
+								vrp++;
+							}
+						}
+					} else {
+						var pal=new Array(256);
+						for (var i=0;i<256;i++) {
+							var color=vram[palp++];
+							if (!color) pal[i]=[0,0,0,10];
+							else pal[i]=[colorcurve(color&31),colorcurve((color>>5)&31),colorcurve((color>>10)&31),255];
+						}
+						for (let y=0;y<256;y++) {
+							var imarrp=n*1024+8192*4*y;
+							var vrp=vrampage*64+1024*y;
+							for (let x=0;x<128;x++) {
+								var c1=vram[vrp]&255,c2=(vram[vrp]>>8)&255;
+								for (let i=0;i<4;i++) textureba[imarrp++]=pal[c1][i];
+								for (let i=0;i<4;i++) textureba[imarrp++]=pal[c2][i];
+								vrp++;
+							}
+						}
+					}
+					if (lut) lut+=16; else {lutpag+=2; lutpal+=2}
+				}
+				return new THREE.DataTexture( textureba, 8192, 256, THREE.RGBAFormat );
+			}
+			
+			var texture,textureba,materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds,side=(urlvars["ds"][0]=="y")?THREE.DoubleSide:(games[urlvars["game"]].newengine)?THREE.FrontSide:THREE.BackSide,
+			materialbasic=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: side, vertexColors: THREE.FaceColors}), materialbasicst=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: side, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
+			materialbasicsta=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: side, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
+			materialbasicsts=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: side, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false}),
+			materialbasicds=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: THREE.DoubleSide, vertexColors: THREE.FaceColors}), materialbasicstds=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: THREE.DoubleSide, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
+			materialbasicstads=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: THREE.DoubleSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
+			materialbasicstsds=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: THREE.DoubleSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false});
+
+			function getent(inipos) {	//Same processing for TS2, BLSC, and Bugs
+				if (model) scene.remove(model);
+				model=new THREE.Group();
+				var pos=inipos+4;
+				while ((pos-inipos)<allsize) {
+					if ((array8u[pos+3]&0xF0)==0x30) {
+						var testgeom=new THREE.BufferGeometry(),color=[],position=[],uv=[],idx=0,flag,vrampag;
+						do {
+							for (let i=0;i<3;i++) color.push(array8u[pos++]/255);
+							flag=array8u[pos++];
+							var nv=(flag&8)?4:3,currposition=[],currcolor=[],curruv=[];
+							if (!games[urlvars["game"]].newengine) {	//TS2, BugsLife
+								for (let i=0;i<nv;i++) {
+									for (let j=0;j<3;j++) {currposition.push(array16[pos>>1]); pos+=2;}
+									for (let j=0;j<2;j++) curruv.push(array8u[pos++]);
+								}
+								for (let i=1;i<nv;i++) {
+									for (let j=0;j<3;j++) currcolor.push(array8u[pos++]/255);
+									pos++;
+								}
+								vrampag=array8u[pos-1];
+							} else {	//BLSC, MRM, TSR
+								for (let i=0;i<nv;i++) {
+									if (i>0) {
+										for (let j=0;j<3;j++) currcolor.push(array8u[pos++]/255);
+										pos++;
+									}
+									for (let j=0;j<3;j++) {currposition.push(array16[pos>>1]); pos+=2;}
+									for (let j=0;j<2;j++) curruv.push(array8u[pos++]);
+								}
+								vrampag=array8u[pos-9];
+							}
+							if (nv==4) {
+								//console.log(currcolor);
+								for (let i=0;i<9;i++) position.push(currposition[i]);
+								for (let i=0;i<3;i++) position.push(currposition[i]);
+								for (let i=6;i<12;i++) position.push(currposition[i]);
+								
+								for (let i=0;i<6;i++) uv.push(curruv[i]);
+								for (let i=0;i<2;i++) uv.push(curruv[i]);
+								for (let i=4;i<8;i++) uv.push(curruv[i]);
+								
+								for (let i=0;i<6;i++) color.push(currcolor[i]);
+								for (let i=0;i<3;i++) color.push(color[color.length-9]);
+								for (let i=3;i<9;i++) color.push(currcolor[i]);
+							} else {
+								currposition.forEach(x=>position.push(x));
+								curruv.forEach(x=>uv.push(x));
+								currcolor.forEach(x=>color.push(x));
+							}
+							var addedvertex=(nv===4)?6:nv;
+							testgeom.addGroup(idx,addedvertex,(flag&0x07)|((vrampag>>4)&8)); idx+=addedvertex;
+							for (let i=0;i<addedvertex;i++) {	//fix UVs
+								uv[uv.length-1-i*2]=1-uv[uv.length-1-i*2]/256;
+								uv[uv.length-2-i*2]=uv[uv.length-2-i*2]/8192+(vrampag&0x1F)*0.03125;
+							}
+							testgeom.addAttribute('position',new THREE.BufferAttribute(new Float32Array(position), 3));
+							testgeom.addAttribute('color',new THREE.BufferAttribute(new Float32Array(color), 3));
+							testgeom.addAttribute('uv',new THREE.BufferAttribute(new Float32Array(uv), 2));
+						} while ((pos-inipos)<allsize && (array8u[pos+3]&0xF0)==0x30);
+						var mesh=new THREE.Mesh( testgeom, [materialbasic,materialbasicsts,materialbasicsta,materialbasicst,materialtex,materialtexsts,materialtexsta,materialtexst,materialbasicds,materialbasicstsds,materialbasicstads,materialbasicstds,materialtexds,materialtexstsds,materialtexstads,materialtexstds]);
+						model.add(mesh);
+					}
+					/*else if (array32u[pos>>2]==0x00) pos+=4;
+					else if (array32u[pos>>2]==0x04) pos+=44;
+					else if (array32u[pos>>2]==0x08) pos+=100;
+					else if (array32u[pos>>2]==0x09) pos+=108;
+					else if (array32u[pos>>2]==0x0A) pos+=116;	//148
+					else if (array32u[pos>>2]==0x0B) pos+=168;
+					else if (array32u[pos>>2]==0x0C) pos+=180;
+					else if (array32u[pos>>2]==0x10) pos+=216;
+					else if (array32u[pos>>2]==0x16) pos+=288;
+					else if (array32u[pos>>2]==0x08000069) pos+=1572;*/
+					else if (games[urlvars["game"]].newengine && array32u[pos>>2]==0x02) pos+=4;
+					else if (!array32u[pos>>2]) while ((pos-inipos)<allsize && (array8u[pos+3]&0xF4)!=0x34) pos+=4;
+					else {
+						console.log("rubish data at: "+((inipos)?postopsxe(pos):pos.toString(16)));
+						break;
+					}
+					console.log((inipos)?postopsxe(pos):pos.toString(16));
+				}
+				model.scale.x=mult; model.scale.y=mult; model.scale.z=mult;
+				scene.add(model);
+				camera.position.x=0; camera.position.y=-100; camera.position.z=-200;
+				camera.rotation.x=Math.PI; camera.rotation.y=0; camera.rotation.z=0;
+				return model;
+			}
+			
+			function loaded() {
+				window.addEventListener( 'resize', onWindowResize, false );
+				texture = getPalTextures();
+				texture.flipY=true; texture.flipX=true;
+				//texture.magFilter=THREE.LinearFilter;
+				texture.needsUpdate=true;
+				materialtex=new THREE.MeshBasicMaterial({side: side, map: texture, wireframe: false, alphaTest:0.5, vertexColors: THREE.FaceColors});
+				materialtexst=new THREE.MeshBasicMaterial({side: side, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 0.5, depthWrite: false});
+				materialtexsta=new THREE.MeshBasicMaterial({side: side, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false});
+				materialtexsts=new THREE.MeshBasicMaterial({side: side, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, depthWrite: false});
+				materialtexds=new THREE.MeshBasicMaterial({side: THREE.DoubleSide, map: texture, wireframe: false, alphaTest:0.5, vertexColors: THREE.FaceColors});
+				materialtexstds=new THREE.MeshBasicMaterial({side: THREE.DoubleSide, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 0.5, depthWrite: false});
+				materialtexstads=new THREE.MeshBasicMaterial({side: THREE.DoubleSide, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false});
+				materialtexstsds=new THREE.MeshBasicMaterial({side: THREE.DoubleSide, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, depthWrite: false});
+				allsize=urlvars["allsize"];
+				model=null;
+				if (urlvars["allpointer"]) model=getent(psxetopos(parseInt(urlvars["allpointer"])));
+				//document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+				
+				document.querySelector('input').addEventListener('change', function() {
+					var reader = new FileReader();
+					reader.onload = function() {
+						var arrayBuffer = this.result;
+						array8u = new Uint8Array(arrayBuffer);
+						array16 = new Int16Array(arrayBuffer);
+						array16u = new Uint16Array(arrayBuffer);
+						array32 = new Int32Array(arrayBuffer);
+						array32u = new Uint32Array(arrayBuffer);
+						allsize=array8u.length-192;
+						getent(0);
+					}
+					reader.readAsArrayBuffer(this.files[0]);
+				}, false);
+
+				var controls = new THREE.FlyControls( camera, renderer.domElement );
+				var t=performance.now();
+				var animate = function () {
+					requestAnimationFrame( animate );
+					var newt=performance.now();
+					controls.update(newt-t);
+					t=newt;
+					renderer.render( scene, camera );
+				};
+				animate();
+			}
+		</script>
+	</body>
+</html>
