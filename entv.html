@@ -9,7 +9,7 @@
 		</style>
 	</head>
 	<body>
-		<button onclick="document.querySelector('input').click()">Load .ALL / .MDL</button>
+		<button onclick="document.querySelector('input').click()" disabled>Load .ALL / .MDL</button>
 		<input type="file" accept=".ALL,.MDL" style="display:none">
 		<div>
 		<input type="radio" id="html" name="mode" value="Textured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=false;x.map=texture;x.needsUpdate=true;});" checked><label for="Textured">Textured</label>
@@ -24,15 +24,15 @@
 				urlvars[key] = value;
 			});
 			var games = {
-				"blsc": {"clut": addtopos(0x800E2518),"thumbsp": 0,"newengine": true},
-				"ts2": {"clut": addtopos(0x800CD200),"thumbsp": 4,"newengine": false},
+				"blsc": {"clut": addtopos(0x800E2518),"thumbsp": 0,"newengine": true, "pointerdist": 44},
+				"ts2": {"clut": addtopos(0x800CD200),"thumbsp": 4,"newengine": false, "pointerdist": 108},
 				"ts2demo": {"clut": addtopos(0x800BCCE0),"thumbsp": 4, "newengine": false},
 				"ts2proto": {"clut": addtopos(0x800B58A8),"thumbsp": 4, "newengine": false},
-				"bugs": {"clutpag": addtopos(0x800910B0), "clutpal": addtopos(0x800A7DD8),"thumbsp": 0, "newengine": false},
+				"bugs": {"clutpag": addtopos(0x800910B0), "clutpal": addtopos(0x800A7DD8),"thumbsp": 0, "newengine": false, "pointerdist": 84},
 				"bugsdemo": {"clutpag": addtopos(0x80094740),"clutpal": addtopos(0x800a6be8),"thumbsp": 0, "newengine": false},
-				"wl": {"clut": addtopos(0x800AAAB8),"thumbsp": 0, "newengine": true},
-				"tsr": {"clut": addtopos(0x800DA610),"thumbsp": 4, "newengine": true},
-				"mrm": {"clut": addtopos(0x800DFF00),"thumbsp": 4, "newengine": true}
+				"wl": {"clut": addtopos(0x800AAAB8),"thumbsp": 0, "newengine": true, "pointerdist": 44},
+				"tsr": {"clut": addtopos(0x800DA610),"thumbsp": 4, "newengine": true, "pointerdist": 112},
+				"mrm": {"clut": addtopos(0x800DFF00),"thumbsp": 4, "newengine": false}
 			};
 		
 			var mult=urlvars["mult"]||0.25;
@@ -189,86 +189,117 @@
 			materialbasicstads=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: THREE.DoubleSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
 			materialbasicstsds=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: THREE.DoubleSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false});
 
-			function getent(inipos) {	//Same processing for TS2, BLSC, and Bugs
+			function getmesh(pos) {
+				//console.log("start processing mesh at pos: "+pos.toString(16)+", psxe: "+postopsxe(pos));
+				var geom=new THREE.BufferGeometry(),color=[],position=[],uv=[],idx=0,flag,vrampag;
+				while ((array8u[pos+3]&0xF0)==0x30) {
+					for (let i=0;i<3;i++) color.push(Math.sin(array8u[pos++]*Math.PI/255));
+					flag=array8u[pos++];
+					var nv=(flag&8)?4:3,currposition=[],currcolor=[],curruv=[];
+					if (!games[urlvars["game"]].newengine) {	//TS2, BugsLife
+						for (let i=0;i<nv;i++) {
+							for (let j=0;j<3;j++) {currposition.push(array16[pos>>1]); pos+=2;}
+							for (let j=0;j<2;j++) curruv.push(array8u[pos++]);
+						}
+						for (let i=1;i<nv;i++) {
+							for (let j=0;j<3;j++) currcolor.push(Math.sin(array8u[pos++]*Math.PI/255));
+							pos++;
+						}
+						vrampag=array8u[pos-1];
+					} else {	//BLSC, MRM, TSR
+						for (let i=0;i<nv;i++) {
+							if (i>0) {
+								for (let j=0;j<3;j++) currcolor.push(Math.sin(array8u[pos++]*Math.PI/255));
+								pos++;
+							}
+							for (let j=0;j<3;j++) {currposition.push(array16[pos>>1]); pos+=2;}
+							for (let j=0;j<2;j++) curruv.push(array8u[pos++]);
+						}
+						vrampag=array8u[pos-9];
+					}
+					
+					switch(urlvars["hack"]) {
+						//case "blscuvfix": curruv=curruv.map(x=>x+0x40&0xFF); break;
+						case "wlnovc": color[color.length-1]=color[color.length-2]=color[color.length-3]=1; currcolor=currcolor.map(x=>1);
+					}
+					
+					if (nv==4) {
+						for (let i=0;i<9;i++) position.push(currposition[i]);
+						for (let i=0;i<3;i++) position.push(currposition[i]);
+						for (let i=6;i<12;i++) position.push(currposition[i]);
+						
+						for (let i=0;i<6;i++) uv.push(curruv[i]);
+						for (let i=0;i<2;i++) uv.push(curruv[i]);
+						for (let i=4;i<8;i++) uv.push(curruv[i]);
+						
+						for (let i=0;i<6;i++) color.push(currcolor[i]);
+						for (let i=0;i<3;i++) color.push(color[color.length-9]);
+						for (let i=3;i<9;i++) color.push(currcolor[i]);
+					} else {
+						currposition.forEach(x=>position.push(x));
+						curruv.forEach(x=>uv.push(x));
+						currcolor.forEach(x=>color.push(x));
+					}
+					var addedvertex=(nv===4)?6:nv;
+					geom.addGroup(idx,addedvertex,(flag&0x07)|((vrampag>>4)&8)); idx+=addedvertex;
+					for (let i=0;i<addedvertex;i++) {	//fix UVs
+						uv[uv.length-1-i*2]=1-uv[uv.length-1-i*2]/256;
+						uv[uv.length-2-i*2]=uv[uv.length-2-i*2]/8192+(vrampag&0x1F)*0.03125;
+					}
+					geom.addAttribute('position',new THREE.BufferAttribute(new Float32Array(position), 3));
+					geom.addAttribute('color',new THREE.BufferAttribute(new Float32Array(color), 3));
+					geom.addAttribute('uv',new THREE.BufferAttribute(new Float32Array(uv), 2));
+				}
+				if (array32u[pos>>2]==2) {	//LOD mesh
+					if (urlvars["lod"]=="1") {
+						console.log("HID data ignored at pos: "+pos.toString(16)+", psxe: "+postopsxe(pos));
+						return getmesh(pos+4);
+					}
+					else console.log("LOD data ignored at pos: "+pos.toString(16)+", psxe: "+postopsxe(pos));
+				}
+				else if (array32u[pos>>2]) console.warn("rubish data processing mesh at vertex no "+idx+" at pos: "+pos.toString(16)+", psxe: "+postopsxe(pos));
+				//else console.log("end processing mesh at pos: "+pos.toString(16)+", psxe: "+postopsxe(pos));
+				return new THREE.Mesh( geom, [materialbasic,materialbasicsts,materialbasicsta,materialbasicst,materialtex,materialtexsts,materialtexsta,materialtexst,materialbasicds,materialbasicstsds,materialbasicstads,materialbasicstds,materialtexds,materialtexstsds,materialtexstads,materialtexstds]);
+			}
+			
+			function getentfromfile() {
 				if (model) scene.remove(model);
 				model=new THREE.Group();
-				var pos=inipos+4;
-				while ((pos-inipos)<allsize) {
-					if ((array8u[pos+3]&0xF0)==0x30) {
-						var testgeom=new THREE.BufferGeometry(),color=[],position=[],uv=[],idx=0,flag,vrampag;
-						do {
-							for (let i=0;i<3;i++) color.push(array8u[pos++]/255);
-							flag=array8u[pos++];
-							var nv=(flag&8)?4:3,currposition=[],currcolor=[],curruv=[];
-							if (!games[urlvars["game"]].newengine) {	//TS2, BugsLife
-								for (let i=0;i<nv;i++) {
-									for (let j=0;j<3;j++) {currposition.push(array16[pos>>1]); pos+=2;}
-									for (let j=0;j<2;j++) curruv.push(array8u[pos++]);
-								}
-								for (let i=1;i<nv;i++) {
-									for (let j=0;j<3;j++) currcolor.push(array8u[pos++]/255);
-									pos++;
-								}
-								vrampag=array8u[pos-1];
-							} else {	//BLSC, MRM, TSR
-								for (let i=0;i<nv;i++) {
-									if (i>0) {
-										for (let j=0;j<3;j++) currcolor.push(array8u[pos++]/255);
-										pos++;
-									}
-									for (let j=0;j<3;j++) {currposition.push(array16[pos>>1]); pos+=2;}
-									for (let j=0;j<2;j++) curruv.push(array8u[pos++]);
-								}
-								vrampag=array8u[pos-9];
-							}
-							if (nv==4) {
-								//console.log(currcolor);
-								for (let i=0;i<9;i++) position.push(currposition[i]);
-								for (let i=0;i<3;i++) position.push(currposition[i]);
-								for (let i=6;i<12;i++) position.push(currposition[i]);
-								
-								for (let i=0;i<6;i++) uv.push(curruv[i]);
-								for (let i=0;i<2;i++) uv.push(curruv[i]);
-								for (let i=4;i<8;i++) uv.push(curruv[i]);
-								
-								for (let i=0;i<6;i++) color.push(currcolor[i]);
-								for (let i=0;i<3;i++) color.push(color[color.length-9]);
-								for (let i=3;i<9;i++) color.push(currcolor[i]);
-							} else {
-								currposition.forEach(x=>position.push(x));
-								curruv.forEach(x=>uv.push(x));
-								currcolor.forEach(x=>color.push(x));
-							}
-							var addedvertex=(nv===4)?6:nv;
-							testgeom.addGroup(idx,addedvertex,(flag&0x07)|((vrampag>>4)&8)); idx+=addedvertex;
-							for (let i=0;i<addedvertex;i++) {	//fix UVs
-								uv[uv.length-1-i*2]=1-uv[uv.length-1-i*2]/256;
-								uv[uv.length-2-i*2]=uv[uv.length-2-i*2]/8192+(vrampag&0x1F)*0.03125;
-							}
-							testgeom.addAttribute('position',new THREE.BufferAttribute(new Float32Array(position), 3));
-							testgeom.addAttribute('color',new THREE.BufferAttribute(new Float32Array(color), 3));
-							testgeom.addAttribute('uv',new THREE.BufferAttribute(new Float32Array(uv), 2));
-						} while ((pos-inipos)<allsize && (array8u[pos+3]&0xF0)==0x30);
-						var mesh=new THREE.Mesh( testgeom, [materialbasic,materialbasicsts,materialbasicsta,materialbasicst,materialtex,materialtexsts,materialtexsta,materialtexst,materialbasicds,materialbasicstsds,materialbasicstads,materialbasicstds,materialtexds,materialtexstsds,materialtexstads,materialtexstds]);
+				var pos=4, metadatapos=array32u[0]*2, nmesh=array32u[metadatapos>>2];
+				console.clear();
+				console.log("Input file has "+nmesh+" data groups");
+				var meshgroupsread=0;
+				metadatapos+=4;
+				for (let i=0;i<nmesh;i++) {
+					switch (array32[metadatapos+0x10>>2]) {
+						case 0x01:		//mesh data group
+						var mesh=getmesh(pos);
+						mesh.position.x=array32[metadatapos+4>>2]; mesh.position.y=array32[metadatapos+8>>2]; mesh.position.z=array32[metadatapos+12>>2];
 						model.add(mesh);
-					}
-					/*else if (array32u[pos>>2]==0x00) pos+=4;
-					else if (array32u[pos>>2]==0x04) pos+=44;
-					else if (array32u[pos>>2]==0x08) pos+=100;
-					else if (array32u[pos>>2]==0x09) pos+=108;
-					else if (array32u[pos>>2]==0x0A) pos+=116;	//148
-					else if (array32u[pos>>2]==0x0B) pos+=168;
-					else if (array32u[pos>>2]==0x0C) pos+=180;
-					else if (array32u[pos>>2]==0x10) pos+=216;
-					else if (array32u[pos>>2]==0x16) pos+=288;
-					else if (array32u[pos>>2]==0x08000069) pos+=1572;*/
-					else if (games[urlvars["game"]].newengine && array32u[pos>>2]==0x02) pos+=4;
-					else if (!array32u[pos>>2]) while ((pos-inipos)<allsize && (array8u[pos+3]&0xF4)!=0x34) pos+=4;
-					else {
-						console.log("rubish data at: "+((inipos)?postopsxe(pos):pos.toString(16)));
+						meshgroupsread++;
 						break;
+						case 0x011F: console.log("mesh joint data group found (ignored)"); break;
+						case 0x09: console.log("target position data group found (ignored)"); break;
+						default: console.warn("unknown data group (id=0x"+array32u[metadatapos+0x10>>2].toString(16)+") found (ignored)");
 					}
-					console.log((inipos)?postopsxe(pos):pos.toString(16));
+					pos+=array32u[metadatapos>>2]*2;
+					metadatapos+=0x4C;
+				}
+				model.scale.x=mult; model.scale.y=mult; model.scale.z=mult;
+				scene.add(model);
+				camera.position.x=0; camera.position.y=-100; camera.position.z=-200;
+				camera.rotation.x=Math.PI; camera.rotation.y=0; camera.rotation.z=0;
+				console.log(meshgroupsread+" mesh groups read");
+				return model;
+			}
+			
+			function getentfrommemory(inipos,size) {	//Do not support object translations!
+				if (model) scene.remove(model);
+				model=new THREE.Group();
+				for (let i=0;i<size;i++) {
+					var mesh=getmesh(addtopos(array32u[inipos>>2]));
+					model.add(mesh);
+					inipos+=games[urlvars["game"]].pointerdist;
 				}
 				model.scale.x=mult; model.scale.y=mult; model.scale.z=mult;
 				scene.add(model);
@@ -293,7 +324,7 @@
 				materialtexstsds=new THREE.MeshBasicMaterial({side: THREE.DoubleSide, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, depthWrite: false});
 				allsize=urlvars["allsize"];
 				model=null;
-				if (urlvars["allpointer"]) model=getent(psxetopos(parseInt(urlvars["allpointer"])));
+				if (urlvars["pointer"]) model=getentfrommemory(psxetopos(parseInt(urlvars["pointer"])),parseInt(urlvars["size"]));
 				//document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 				
 				document.querySelector('input').addEventListener('change', function() {
@@ -306,11 +337,12 @@
 						array32 = new Int32Array(arrayBuffer);
 						array32u = new Uint32Array(arrayBuffer);
 						allsize=array8u.length-192;
-						getent(0);
+						getentfromfile();
 					}
 					reader.readAsArrayBuffer(this.files[0]);
 				}, false);
-
+				document.querySelector("button").disabled=false;
+				
 				var controls = new THREE.FlyControls( camera, renderer.domElement );
 				var t=performance.now();
 				var animate = function () {
