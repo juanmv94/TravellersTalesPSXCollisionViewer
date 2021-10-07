@@ -4,17 +4,20 @@
 		<style>
 			body { margin: 0; font-family: Arial;}
 			canvas { width: 100%; height: 100% }
+			center {position:absolute;display: table; height: 100%; width: 100%; color: white;}
+			h1 {display: table-cell; vertical-align: middle;}
 			button {position: fixed; width: 140px; height: 26px; margin: 4px; background-color: #FFFFFF77; color: black; border: 2px solid #00000077; border-radius: 10px;}
 			div {position: fixed; margin: 4px; right:0;}
 		</style>
 	</head>
 	<body>
-		<button onclick="document.querySelector('input').click()" disabled>Load .ALL / .MDL</button>
+		<center id="progresscontainer"><h1 id="progress">Loading SaveState file</h1></center>
+		<button id="loadfilebutton" onclick="document.querySelector('input').click()" disabled>Load .ALL / .MDL</button>
 		<input type="file" accept=".ALL,.MDL" style="display:none">
 		<div>
-		<input type="radio" id="html" name="mode" value="Textured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=false;x.map=texture;x.needsUpdate=true;});" checked><label for="Textured">Textured</label>
-		<input type="radio" id="html" name="mode" value="Untextured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=false;x.map=null;x.needsUpdate=true;});"><label for="Untextured">Untextured</label>
-		<input type="radio" id="html" name="mode" value="Wireframe" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=true;x.map=null;x.needsUpdate=true;});"><label for="Wireframe">Wireframe</label>
+		<input type="radio" id="modetextured" name="mode" value="Textured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=false;x.map=texture;x.needsUpdate=true;});" checked disabled><label for="Textured">Textured</label>
+		<input type="radio" id="modeuntextured" name="mode" value="Untextured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=false;x.map=null;x.needsUpdate=true;});" disabled><label for="Untextured">Untextured</label>
+		<input type="radio" id="modewireframe" name="mode" value="Wireframe" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=true;x.map=null;x.needsUpdate=true;});" disabled><label for="Wireframe">Wireframe</label>
 		</div>
 		<script src="three.min.js"></script>
 		<script src="FlyControls.js"></script>
@@ -39,9 +42,14 @@
 			
 			var arrayBuffer;
 			var oReq = new XMLHttpRequest();
+			var progresstring=document.getElementById("progress");
 			oReq.open("GET", "SSTATES/"+urlvars["file"], true);
 			oReq.responseType = "arraybuffer";
 			oReq.onload = function (oEvent) {
+			  if ((oReq.readyState != 4) || (oReq.status != 200)) {
+				progresstring.innerText="Failed to load "+urlvars["file"];
+				return;
+			  }
 			  arrayBuffer = oReq.response; // Note: not oReq.responseText
 			  if (arrayBuffer) {
 			    array8u = new Uint8Array(arrayBuffer.slice(2));
@@ -50,9 +58,12 @@
 				array32 = new Int32Array(arrayBuffer.slice(2));
 				array32u = new Uint32Array(arrayBuffer.slice(2));
 				vram = new Uint16Array(arrayBuffer.slice(2048*1254+991,2048*1254+991+(2048*256)));
-				loaded();
+				setTimeout(loaded,50);	//we show loading 100%
 			  }
 			};
+			oReq.onprogress = function(pe) {
+			  if (pe.lengthComputable) progresstring.innerText="Loading SaveState file: "+Math.floor(pe.loaded/pe.total*100)+"%";
+			}
 			oReq.send(null);
 			
 			function postopsxe(pos) {
@@ -79,7 +90,7 @@
 			light.position.set( 0.5, 0.5, 0.5 );
 			scene.add( light );
 
-			var renderer = new THREE.WebGLRenderer({antialias: false});
+			var renderer = new THREE.WebGLRenderer({antialias: true});
 			renderer.setSize( window.innerWidth, window.innerHeight );
 			document.body.appendChild( renderer.domElement );
 			
@@ -309,6 +320,7 @@
 			}
 			
 			function loaded() {
+				document.getElementById("progresscontainer").style.display="none";
 				window.addEventListener( 'resize', onWindowResize, false );
 				texture = getPalTextures();
 				texture.flipY=true; texture.flipX=true;
@@ -341,7 +353,7 @@
 					}
 					reader.readAsArrayBuffer(this.files[0]);
 				}, false);
-				document.querySelector("button").disabled=false;
+				["loadfilebutton","modetextured","modeuntextured","modewireframe"].forEach(x=>document.getElementById(x).disabled=false);
 				
 				var controls = new THREE.FlyControls( camera, renderer.domElement );
 				var t=performance.now();

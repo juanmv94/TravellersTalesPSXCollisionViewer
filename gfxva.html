@@ -2,11 +2,14 @@
 	<head>
 		<title>Travellers Tales PSX level gfx viewer by @Juanmv94</title>
 		<style>
-			body { margin: 0; }
+			body { margin: 0; font-family: Arial;}
 			canvas { width: 100%; height: 100% }
+			center {position:absolute;display: table; height: 100%; width: 100%; color: white;}
+			h1 {display: table-cell; vertical-align: middle;}
 		</style>
 	</head>
 	<body>
+		<center id="progresscontainer"><h1 id="progress">Loading SaveState file</h1></center>
 		<script src="three.min.js"></script>
 		<script src="FlyControls.js"></script>
 		<script>
@@ -30,9 +33,15 @@
 			
 			var arrayBuffer;
 			var oReq = new XMLHttpRequest();
+			var progresstring=document.getElementById("progress");
 			oReq.open("GET", "SSTATES/"+urlvars["file"], true);
 			oReq.responseType = "arraybuffer";
 			oReq.onload = function (oEvent) {
+			  if ((oReq.readyState != 4) || (oReq.status != 200)) {
+				progresstring.innerText="Failed to load "+urlvars["file"];
+				return;
+			  }
+			
 			  arrayBuffer = oReq.response; // Note: not oReq.responseText
 			  if (arrayBuffer) {
 			    array8u = new Uint8Array(arrayBuffer.slice(2));
@@ -41,9 +50,12 @@
 				array32 = new Int32Array(arrayBuffer.slice(2));
 				array32u = new Uint32Array(arrayBuffer.slice(2));
 				vram = new Uint16Array(arrayBuffer.slice(2048*1254+991,2048*1254+991+(2048*256)));
-				loaded();
+				setTimeout(loaded,50);	//we show loading 100%
 			  }
 			};
+			oReq.onprogress = function(pe) {
+			  if (pe.lengthComputable) progresstring.innerText="Loading SaveState file: "+Math.floor(pe.loaded/pe.total*100)+"%";
+			}
 			oReq.send(null);
 			
 			function postopsxe(pos) {
@@ -513,6 +525,7 @@
 			}
 			
 			function loaded() {
+				document.getElementById("progresscontainer").style.display="none";
 				window.addEventListener( 'resize', onWindowResize, false );
 				texture = getPalTextures();
 				texture.flipY=true; texture.flipX=true;

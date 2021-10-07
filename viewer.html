@@ -2,11 +2,14 @@
 	<head>
 		<title>Travellers Tales PSX level collision viewer by @Juanmv94</title>
 		<style>
-			body { margin: 0; }
+			body { margin: 0; font-family: Arial;}
 			canvas { width: 100%; height: 100% }
+			center {position:absolute;display: table; height: 100%; width: 100%; color: white;}
+			h1 {display: table-cell; vertical-align: middle;}
 		</style>
 	</head>
 	<body>
+		<center id="progresscontainer"><h1 id="progress">Loading SaveState file</h1></center>
 		<script src="three.min.js"></script>
 		<script src="FlyControls.js"></script>
 		<script>
@@ -28,17 +31,27 @@
 			
 			var arrayBuffer,array16;
 			var oReq = new XMLHttpRequest();
+			var progresstring=document.getElementById("progress");
 			oReq.open("GET", "SSTATES/"+urlvars["file"], true);
 			oReq.responseType = "arraybuffer";
 			oReq.onload = function (oEvent) {
+			  if ((oReq.readyState != 4) || (oReq.status != 200)) {
+				progresstring.innerText="Failed to load "+urlvars["file"];
+				return;
+			  }
+			  
 			  arrayBuffer = oReq.response; // Note: not oReq.responseText
 			  if (arrayBuffer) {
+			    array8u = new Uint8Array(arrayBuffer.slice(2));
 				array16 = new Int16Array(arrayBuffer.slice(2));
 				array32 = new Int32Array(arrayBuffer.slice(2));
 				array32u = new Uint32Array(arrayBuffer.slice(2));
-				loaded();
+				setTimeout(loaded,50);	//we show loading 100%
 			  }
 			};
+			oReq.onprogress = function(pe) {
+			  if (pe.lengthComputable) progresstring.innerText="Loading SaveState file: "+Math.floor(pe.loaded/pe.total*100)+"%";
+			}
 			oReq.send(null);
 			
 			function postopsxe(pos) {
@@ -57,6 +70,18 @@
 				return add-2147483208;
 			}
 			
+			var blinecolor=new THREE.LineBasicMaterial({color: 0x000000, linewidth: 0.5});
+			var glinecolor=new THREE.LineBasicMaterial({color: 0x777777, linewidth: 0.5});
+			var colors=[
+				new THREE.MeshPhongMaterial({color:0xccffcc, flatShading: true}),	//0= TS2: green toxic, BLSC: toxic, Bugs: normal
+				new THREE.MeshPhongMaterial({color:0xaa00ff, flatShading: true}),	//1= TS2: toxic 2, BLSC: toxic with high jump, Bugs: instant death
+				new THREE.MeshPhongMaterial({color:0xff00aa, flatShading: true}),	//2= TS2: toxic 3, BLSC: toxic with waves, Bugs: level finish 1
+				new THREE.MeshPhongMaterial({color:0x7777ff, flatShading: true}),	//3= TS2: wet, BLSC: ???, Bugs: level finish 2
+				new THREE.MeshPhongMaterial({color:0x2222aa, flatShading: true}),	//4= TS2: dirty wet, BLSC: slippery wet, Bugs: toxic
+				new THREE.MeshPhongMaterial({color:0xffffaa, flatShading: true}),	//5= TS2: slippery 1, BLSC: slippery 1
+				new THREE.MeshPhongMaterial({color:0xffff77, flatShading: true}),	//6= TS2: slippery 2, BLSC: slippery 2
+				new THREE.MeshPhongMaterial({color:0xffff00, flatShading: true}),	//7= BLSC: slippery 3
+				new THREE.MeshPhongMaterial({color:0xffffff, flatShading: true})];	//def= TS2: normal,  BLSC: normal
 			
 			
 			function loadpolylist(pos) {
@@ -94,8 +119,7 @@
 			
 			function loadpolybugs(pos) {
 				return {unk1:[array16[pos+0],array16[pos+1],array16[pos+2]],pOrigin:[array16[pos+3],array16[pos+4],array16[pos+5]],p2:[array16[pos+6],array16[pos+7],array16[pos+8]],p3:[array16[pos+9],array16[pos+10],array16[pos+11]],unk2:[array16[pos+12],array16[pos+13],array16[pos+14],array16[pos+15]],
-				bouncing1:0	//bouncing doesn't exist in bugs life. 0 -> first triangle has wall color.
-				,bouncing2:32767	//bouncing doesn't exist in bugs life, and polygons are single triangles. Set 0x7FFF -> second triangle doesn't exist.
+				bouncing2:0x7FFF	//bouncing doesn't exist in bugs life, and polygons are single triangles. Set 0x7FFF -> second triangle doesn't exist.
 				};
 			}
 			
@@ -104,11 +128,9 @@
 				return {pOrigin:[array32[pos+0],array32[pos+1],array32[pos+2]],p2:[array32[pos+3],array32[pos+4],array32[pos+5]],p3:[array32[pos+6],array32[pos+7],array32[pos+8]]};
 			}
 			
-			function drawpoly(t,colors) {
+			function drawpoly(t,color) {
 				var group = new THREE.Group();
 				group.info=t;
-				var color=(t.bouncing1>=0) ? 0 : 1;
-				
 				var coords1= new Array(3);
 				coords1[0]=new Array(3);
 				coords1[0][0]=t.pOrigin[0]*mult;
@@ -123,10 +145,10 @@
 				coords1[2][1]=-(t.pOrigin[1]+t.p3[1])*mult;
 				coords1[2][2]=-(t.pOrigin[2]+t.p3[2])*mult;
 				if (t.bouncing2==32767) {
-					group.add(drawtriangle(coords1,colors[color],false));
+					group.add(drawtriangle(coords1,color,false));
 					return group;
 				}
-				group.add(drawtriangle(coords1,colors[color],true));
+				group.add(drawtriangle(coords1,color,true));
 				var coords2= new Array(3);
 				coords2[0]=new Array(3);
 				coords2[0][0]=(t.pOrigin[0]+t.p4[0])*mult;
@@ -140,7 +162,7 @@
 				coords2[1][0]=(t.pOrigin[0]+t.p3[0])*mult;
 				coords2[1][1]=-(t.pOrigin[1]+t.p3[1])*mult;
 				coords2[1][2]=-(t.pOrigin[2]+t.p3[2])*mult;
-				group.add(drawtriangle(coords2,colors[color],true));
+				group.add(drawtriangle(coords2,color,true));
 				return group;
 			}
 			
@@ -166,23 +188,11 @@
 			}
 			
 			function drawobject(pos32) {
-				var category=(array32u[pos32+11]/(256*256))&255;
-				var colors;
-				switch (category) {
-					case 0: colors=[0xccffcc,0x007700];break;	//TS2: green toxic, BLSC: toxic, Bugs: normal
-					case 1: colors=[0xaa00ff,0x7700aa];break;	//TS2: toxic 2, BLSC: toxic with high jump, Bugs: instant death
-					case 2: colors=[0xff00aa,0xaa0077];break;	//TS2: toxic 3, BLSC: toxic with waves, Bugs: level finish 1
-					case 3: colors=[0x7777ff,0x0000aa];break;	//TS2: wet, BLSC: ???, Bugs: level finish 2
-					case 4: colors=[0x2222aa,0x000066];break;	//TS2: dirty wet, BLSC: slippery wet, Bugs: toxic
-					case 5: colors=[0xffffaa,0x777755];break;	//TS2: slippery 1, BLSC: slippery 1
-					case 6: colors=[0xffff77,0x777733];break;	//TS2: slippery 2, BLSC: slippery 2
-					case 6: colors=[0xffff00,0x777700];break;	//BLSC: slippery 3
-					default: colors=[0xffffff,0xc0c0c0];		//TS2: normal,  BLSC: normal
-				}
+				var category=array8u[(pos32<<2)+46];
 				var polylist=loadpolylist(addtopos(array32u[pos32+4])/2);
 				var group = new THREE.Group();
 				for (var i=0;i<polylist.length;i++) {
-					group.add(drawpoly(polylist[i],colors));
+					group.add(drawpoly(polylist[i],Math.min(category,8)));
 				}
 				group.position.x=array32[pos32]*mult/32;
 				group.position.y=-array32[pos32+1]*mult/32;
@@ -195,7 +205,7 @@
 				var polylist=loadpolylistrascal(addtopos(array32u[pos32])/2);
 				var group = new THREE.Group();
 				for (var i=0;i<polylist.length;i++) {
-					group.add(drawpolyrascal(polylist[i],0xFFFFFF));
+					group.add(drawpolyrascal(polylist[i],8));
 				}
 				group.position.x=array32[pos32+4]*32*mult;
 				group.position.y=-array32[pos32+5]*32*mult;
@@ -206,34 +216,21 @@
 			
 			function drawtriangle(coords, color, gray) {
 				var group = new THREE.Group();
-				var geom = new THREE.Geometry();
-				var v1 = new THREE.Vector3(coords[0][0], coords[0][1], coords[0][2]);
-				var v2 = new THREE.Vector3(coords[1][0], coords[1][1], coords[1][2]);
-				var v3 = new THREE.Vector3(coords[2][0], coords[2][1], coords[2][2]);
-				var triangle = new THREE.Triangle(v1, v3, v2);
-				var normal = triangle.normal();
-				geom.vertices.push(triangle.c);
-				geom.vertices.push(triangle.a);
-				geom.vertices.push(triangle.b);
+				var vertices = new Float32Array();
+				var geom = new THREE.BufferGeometry();
 				if (gray) {
-					var glgeom = new THREE.Geometry();
-					glgeom.vertices.push(triangle.b);
-					glgeom.vertices.push(triangle.c);
-					var gline = new THREE.Line(
-					  glgeom,
-					  new THREE.LineBasicMaterial({ color: 0x777777})
-					);
+					geom.addAttribute('position', new THREE.BufferAttribute(new Float32Array([coords[1][0], coords[1][1], coords[1][2], coords[0][0], coords[0][1], coords[0][2], coords[2][0], coords[2][1], coords[2][2]]),3));
+					
+					var glgeom=new THREE.BufferGeometry();
+					glgeom.addAttribute('position', new THREE.BufferAttribute(new Float32Array([coords[2][0], coords[2][1], coords[2][2], coords[1][0], coords[1][1], coords[1][2]]),3));
+					var gline = new THREE.Line(glgeom, glinecolor);
 					group.add(gline);
 				} else {
-					geom.vertices.push(triangle.c);
+					geom.addAttribute('position', new THREE.BufferAttribute(new Float32Array([coords[1][0], coords[1][1], coords[1][2], coords[0][0], coords[0][1], coords[0][2], coords[2][0], coords[2][1], coords[2][2], coords[1][0], coords[1][1], coords[1][2]]),3));
 				}
-				geom.faces.push(new THREE.Face3(0, 1, 2, normal));
-				var mesh = new THREE.Mesh(geom, new THREE.MeshPhongMaterial( { color:color, flatShading: true}));//new THREE.Mesh(geom, new THREE.MeshBasicMaterial({ color: 0xbbbbbb}));
-				var line = new THREE.Line(
-				  geom,
-				  new THREE.LineBasicMaterial({ color: 0x000000})
-				);
+				var line = new THREE.Line(geom, blinecolor);
 				group.add(line);
+				var mesh = new THREE.Mesh(geom, colors[color]);
 				group.add(mesh);
 				return group;
 			}
@@ -242,11 +239,12 @@
 			scene.background = new THREE.Color(0x7777ff);
 			var camera = new THREE.PerspectiveCamera( 50, window.innerWidth/window.innerHeight, 0.1, 10000 );
 			
-			var light = new THREE.HemisphereLight( 0xffffff, 0xc0c0c0, 0.95 );
-			light.position.set( 0.5, 0.5, 0.5 );
+			scene.add(new THREE.AmbientLight(0xffffff, 1));
+			var light = new THREE.HemisphereLight(0xffffff, 0x505050, -0.5);
+			light.position.set(1000, 10000, 2000);
 			scene.add( light );
 
-			var renderer = new THREE.WebGLRenderer();
+			var renderer = new THREE.WebGLRenderer({ antialias: true });
 			renderer.setSize( window.innerWidth, window.innerHeight );
 			document.body.appendChild( renderer.domElement );
 			
@@ -255,7 +253,7 @@
 					  obj.visible = !wireframe;
 					  return;
 				}
-			  obj.children.forEach(child => {
+			  obj.children.forEach(function(child) {
 				setWireframe(child, wireframe);
 			  });
 			}
@@ -322,6 +320,7 @@
 			var selectedObj=null;
 			var area=null;
 			function loaded() {
+				document.getElementById("progresscontainer").style.display="none";
 				var iniarea=games[urlvars["game"]].iniarea;
 				area=games[urlvars["game"]].loadobjects(iniarea);
 				scene.add(area);
