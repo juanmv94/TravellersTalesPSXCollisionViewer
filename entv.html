@@ -15,9 +15,10 @@
 		<button id="loadfilebutton" onclick="document.querySelector('input').click()" disabled>Load .ALL / .MDL</button>
 		<input type="file" accept=".ALL,.MDL" style="display:none">
 		<div>
-		<input type="radio" id="modetextured" name="mode" value="Textured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=false;x.map=texture;x.needsUpdate=true;});" checked disabled><label for="Textured">Textured</label>
-		<input type="radio" id="modeuntextured" name="mode" value="Untextured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=false;x.map=null;x.needsUpdate=true;});" disabled><label for="Untextured">Untextured</label>
-		<input type="radio" id="modewireframe" name="mode" value="Wireframe" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(x=>{x.wireframe=true;x.map=null;x.needsUpdate=true;});" disabled><label for="Wireframe">Wireframe</label>
+		<input type="radio" id="modecollision" name="mode" value="Collision" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(function(x){x.visible=false;}); blinecolor.visible=true; glinecolor.visible=true; colors.forEach(function(x){x.visible=true;});" disabled><label for="Textured">Collision</label>
+		<input type="radio" id="modetextured" name="mode" value="Textured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(function(x){x.visible=true; x.wireframe=false;x.map=texture;x.needsUpdate=true;}); blinecolor.visible=false; glinecolor.visible=false; colors.forEach(function(x){x.visible=false;}); setWireframe(model,false);selectedObj=null;" disabled><label for="Textured">Textured</label>
+		<input type="radio" id="modeuntextured" name="mode" value="Untextured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(function(x){x.visible=true; x.wireframe=false;x.map=null;x.needsUpdate=true;}); blinecolor.visible=false; glinecolor.visible=false; colors.forEach(function(x){x.visible=false;}); setWireframe(model,false);selectedObj=null;" disabled><label for="Untextured">Untextured</label>
+		<input type="radio" id="modewireframe" name="mode" value="Wireframe" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(function(x){x.visible=true; x.wireframe=true;x.map=null;x.needsUpdate=true;}); blinecolor.visible=false; glinecolor.visible=false; colors.forEach(function(x){x.visible=false;}); setWireframe(model,false);selectedObj=null;" disabled><label for="Wireframe">Wireframe</label>
 		</div>
 		<script src="three.min.js"></script>
 		<script src="FlyControls.js"></script>
@@ -27,44 +28,19 @@
 				urlvars[key] = value;
 			});
 			var games = {
-				"blsc": {"clut": addtopos(0x800E2518),"thumbsp": 0,"newengine": true, "pointerdist": 44},
-				"ts2": {"clut": addtopos(0x800CD200),"thumbsp": 4,"newengine": false, "pointerdist": 108},
-				"ts2demo": {"clut": addtopos(0x800BCCE0),"thumbsp": 4, "newengine": false},
-				"ts2proto": {"clut": addtopos(0x800B58A8),"thumbsp": 4, "newengine": false},
-				"bugs": {"clutpag": addtopos(0x800910B0), "clutpal": addtopos(0x800A7DD8),"thumbsp": 0, "newengine": false, "pointerdist": 84},
-				"bugsdemo": {"clutpag": addtopos(0x80094740),"clutpal": addtopos(0x800a6be8),"thumbsp": 0, "newengine": false},
-				"wl": {"clut": addtopos(0x800AAAB8),"thumbsp": 0, "newengine": true, "pointerdist": 44},
-				"tsr": {"clut": addtopos(0x800DA610),"thumbsp": 4, "newengine": true, "pointerdist": 112},
-				"mrm": {"clut": addtopos(0x800DFF00),"thumbsp": 4, "newengine": false}
+				"blsc": {"clut": addtopos(0x800E2518), "thumbsp": 0,"newgfxengine": true, "gfxpointerdist": 44, "colpointerdist": 0x34, "colpolysize":22, "getcolpolydata":getcolpolydatats2, "coliniarea": psxetopos(0xb69ec8)},
+				"ts2": {"clut": addtopos(0x800CD200), "thumbsp": 4,"newgfxengine": false, "gfxpointerdist": 108, "colpointerdist": 0x34, "colpolysize":22, "getcolpolydata":getcolpolydatats2, "coliniarea": psxetopos(0xb54bb0)},
+				"ts2demo": {"clut": addtopos(0x800BCCE0), "thumbsp": 4, "newgfxengine": false, "colpointerdist": 0x30, "colpolysize":22, "getcolpolydata":getcolpolydatats2, "coliniarea": psxetopos(0xb43b80)},
+				"ts2proto": {"clut": addtopos(0x800B58A8), "thumbsp": 4, "newgfxengine": false, "colpointerdist": 0x30, "colpolysize":22, "getcolpolydata":getcolpolydatats2, "coliniarea": psxetopos(0xb3c748)},
+				"bugs": {"clutpag": addtopos(0x800910B0), "clutpal": addtopos(0x800A7DD8), "thumbsp": 0, "newgfxengine": false, "gfxpointerdist": 84, "colpointerdist": 0x30, "colpolysize":16, "getcolpolydata":getcolpolydatabugs, "coliniarea": psxetopos(0xb334e8)},
+				"bugsdemo": {"clutpag": addtopos(0x80094740),"clutpal": addtopos(0x800a6be8), "thumbsp": 0, "newgfxengine": false, "colpointerdist": 0x34, "colpolysize":24, "getcolpolydata":getcolpolydatabugs, "coliniarea": psxetopos(0xb322f8)},
+				"rascal": {"newgfxengine": false, "colpointerdist": 0xC4, "colpolysize":44, "getcolpolydata": getcolpolydatarascal, "getcolmeshfromss":getcolmeshfromssrascal, "coliniarea": psxetopos(0xb4cd6c)},
+				"wl": {"clut": addtopos(0x800AAAB8), "thumbsp": 0, "newgfxengine": true, "gfxpointerdist": 44},
+				"tsr": {"clut": addtopos(0x800DA610), "thumbsp": 4, "newgfxengine": true, "gfxpointerdist": 112},
+				"mrm": {"clut": addtopos(0x800DFF00), "thumbsp": 4, "newgfxengine": false}
 			};
-		
-			var mult=urlvars["mult"]||0.25;
 			
-			var arrayBuffer;
-			var oReq = new XMLHttpRequest();
-			var progresstring=document.getElementById("progress");
-			oReq.open("GET", "SSTATES/"+urlvars["file"], true);
-			oReq.responseType = "arraybuffer";
-			oReq.onload = function (oEvent) {
-			  if ((oReq.readyState != 4) || (oReq.status != 200)) {
-				progresstring.innerText="Failed to load "+urlvars["file"];
-				return;
-			  }
-			  arrayBuffer = oReq.response; // Note: not oReq.responseText
-			  if (arrayBuffer) {
-			    array8u = new Uint8Array(arrayBuffer.slice(2));
-				array16 = new Int16Array(arrayBuffer.slice(2));
-				array16u = new Uint16Array(arrayBuffer.slice(2));
-				array32 = new Int32Array(arrayBuffer.slice(2));
-				array32u = new Uint32Array(arrayBuffer.slice(2));
-				vram = new Uint16Array(arrayBuffer.slice(2048*1254+991,2048*1254+991+(2048*256)));
-				setTimeout(loaded,50);	//we show loading 100%
-			  }
-			};
-			oReq.onprogress = function(pe) {
-			  if (pe.lengthComputable) progresstring.innerText="Loading SaveState file: "+Math.floor(pe.loaded/pe.total*100)+"%";
-			}
-			oReq.send(null);
+			var mult=urlvars["mult"]||0.02;
 			
 			function postopsxe(pos) {
 				return (pos+11056360).toString(16);
@@ -82,36 +58,112 @@
 				return add-2147483208;
 			}
 			
-			var scene = new THREE.Scene();
+			var blinecolor=new THREE.LineBasicMaterial({color: 0x000000, linewidth: 0.5});
+			var glinecolor=new THREE.LineBasicMaterial({color: 0x777777, linewidth: 0.5});
+			var colors=[
+				new THREE.MeshPhongMaterial({color:0xccffcc, flatShading: true}),	//0= TS2: green toxic, BLSC: toxic, Bugs: normal
+				new THREE.MeshPhongMaterial({color:0xaa00ff, flatShading: true}),	//1= TS2: toxic 2, BLSC: toxic with high jump, Bugs: instant death
+				new THREE.MeshPhongMaterial({color:0xff00aa, flatShading: true}),	//2= TS2: toxic 3, BLSC: toxic with waves, Bugs: level finish 1
+				new THREE.MeshPhongMaterial({color:0x7777ff, flatShading: true}),	//3= TS2: wet, BLSC: ???, Bugs: level finish 2
+				new THREE.MeshPhongMaterial({color:0x2222aa, flatShading: true}),	//4= TS2: dirty wet, BLSC: slippery wet, Bugs: toxic
+				new THREE.MeshPhongMaterial({color:0xffffaa, flatShading: true}),	//5= TS2: slippery 1, BLSC: slippery 1
+				new THREE.MeshPhongMaterial({color:0xffff77, flatShading: true}),	//6= TS2: slippery 2, BLSC: slippery 2
+				new THREE.MeshPhongMaterial({color:0xffff00, flatShading: true}),	//7= BLSC: slippery 3
+				new THREE.MeshPhongMaterial({color:0xffffff, flatShading: true})];	//def= TS2: normal,  BLSC: normal
+			
+			var texture=null,textureba,materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds,side=(urlvars["ds"]=="y")?THREE.DoubleSide:(games[urlvars["game"]].newgfxengine)?THREE.FrontSide:THREE.BackSide,
+			materialbasic=new THREE.MeshBasicMaterial({ color:0xFFFFFF, side: side, vertexColors: THREE.FaceColors}), materialbasicst=new THREE.MeshBasicMaterial({ color:0xFFFFFF, side: side, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
+			materialbasicsta=new THREE.MeshBasicMaterial({ color:0xFFFFFF, side: side, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
+			materialbasicsts=new THREE.MeshBasicMaterial({ color:0xFFFFFF, side: side, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false}),
+			materialbasicds=new THREE.MeshBasicMaterial({ color:0xFFFFFF, side: THREE.DoubleSide, vertexColors: THREE.FaceColors}), materialbasicstds=new THREE.MeshBasicMaterial({ color:0xFFFFFF, side: THREE.DoubleSide, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
+			materialbasicstads=new THREE.MeshBasicMaterial({ color:0xFFFFFF, side: THREE.DoubleSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
+			materialbasicstsds=new THREE.MeshBasicMaterial({ color:0xFFFFFF, side: THREE.DoubleSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false});
+			
+			var scene = new THREE.Scene(), model=null, modelfromss, selectedObj=null;
 			scene.background = new THREE.Color(0x7777ff);
 			var camera = new THREE.PerspectiveCamera( 50, window.innerWidth/window.innerHeight, 0.1, 10000 );
 			
-			var light = new THREE.HemisphereLight( 0xffffff, 0xc0c0c0, 0.95 );
-			light.position.set( 0.5, 0.5, 0.5 );
-			scene.add( light );
+			scene.add(new THREE.AmbientLight(0xffffff, 1));
+			var light = new THREE.HemisphereLight(0xffffff, 0x101010, -0.35);
+			light.position.set(1000, -10000, 5000);
+			scene.add(light);
 
-			var renderer = new THREE.WebGLRenderer({antialias: true});
+			var renderer = new THREE.WebGLRenderer({antialias: urlvars["antialias"]=="y"});
 			renderer.setSize( window.innerWidth, window.innerHeight );
 			document.body.appendChild( renderer.domElement );
 			
-			/*function onDocumentMouseDown( event ) 
-			{
-				if (event.button!=0) {
-					
+			if (urlvars["file"]) {
+				var oReq = new XMLHttpRequest();
+				var progresstring=document.getElementById("progress");
+				oReq.open("GET", "SSTATES/"+urlvars["file"], true);
+				oReq.responseType = "arraybuffer";
+				oReq.onload = function (oEvent) {
+				  if ((oReq.readyState != 4) || (oReq.status != 200)) {
+					progresstring.innerText="Failed to load "+urlvars["file"];
+					return;
+				  }
+				  arrayBuffer = oReq.response; // Note: not oReq.responseText
+				  if (arrayBuffer) {
+					array8u = new Uint8Array(arrayBuffer.slice(2));
+					array16 = new Int16Array(arrayBuffer.slice(2));
+					array16u = new Uint16Array(arrayBuffer.slice(2));
+					array32 = new Int32Array(arrayBuffer.slice(2));
+					array32u = new Uint32Array(arrayBuffer.slice(2));
+					if (urlvars["ssvram"]!="n") {
+						vram = new Uint16Array(arrayBuffer.slice(2048*1254+991,2048*1254+991+(2048*256)));
+						texture = getPalTextures();
+						texture.flipY=true; texture.flipX=true;
+						//texture.magFilter=THREE.LinearFilter;
+						texture.needsUpdate=true;
+					}
+					setTimeout(loaded,50);	//we show loading 100%
+				  }
+				};
+				oReq.onprogress = function(pe) {
+				  if (pe.lengthComputable) progresstring.innerText="Loading SaveState file: "+Math.floor(pe.loaded/pe.total*100)+"%";
 				}
-				var raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2(), intersects;
-				mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-				mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+				oReq.send(null);
+			} else {
+				loaded();
+			}
+			
+			function setWireframe(obj, wireframe) {
+				if (obj instanceof THREE.Mesh) obj.visible = !wireframe;
+				else obj.children.forEach(function(child) {setWireframe(child, wireframe);});
+			}
+			
+			function onDocumentMouseDown(event) {
+				if (!model) return;
+				if (event.button!=0) {setWireframe(model,false);selectedObj=null;return;}
+				var raycaster=new THREE.Raycaster(), mouse=new THREE.Vector2((event.clientX/window.innerWidth)*2-1, -(event.clientY/window.innerHeight)*2+1);
 				raycaster.setFromCamera(mouse, camera);
-				intersects = raycaster.intersectObjects(scene.children, true);
+				var intersects = raycaster.intersectObjects(model.children, true).filter(function(x){return (x.object instanceof THREE.Mesh) && ((colors.indexOf(x.object.material)>=0) ^ (!blinecolor.visible));});
 				if (intersects.length > 0){
-					var obj=intersects[0].object;
-					if (obj.parent.ba) console.log(obj.parent.ba);
-					else if (obj.parent.parent) console.log(obj.parent.parent.ba);
+					var obj=intersects[0].object.parent.parent.parent
+					if (!obj) obj=intersects[0].object;
+					if (obj==selectedObj) {
+					 setWireframe(model,false);
+					 selectedObj=null;
+					} else {
+						setWireframe(model,true);
+						setWireframe(obj,false);
+						selectedObj=obj;
+						if (modelfromss) {
+							console.log("Selected object at add: 0x"+postoadd(obj.pointer)+", emu: 0x"+postopsxe(obj.pointer));
+							console.log("Datagroup at add: 0x"+postoadd(obj.dgpointer)+", emu: 0x"+postopsxe(obj.dgpointer));
+						}
+						else {
+							console.log("Selected object at pos: 0x"+obj.pointer.toString(16));
+							console.log("Datagroup at add: 0x"+obj.dgpointer.toString(16));
+						}
+						//console.log(intersects[0].object.parent.parent.info);	//Clicked col polygon information
+						console.log(obj);
+					}
 				} else {
-					
+					setWireframe(model,false);
+					selectedObj=null;
 				}
-			}*/
+			}
 			
 			function onWindowResize() {
 				camera.aspect = window.innerWidth / window.innerHeight;
@@ -192,22 +244,82 @@
 				return new THREE.DataTexture( textureba, 8192, 256, THREE.RGBAFormat );
 			}
 			
-			var texture,textureba,materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds,side=(urlvars["ds"][0]=="y")?THREE.DoubleSide:(games[urlvars["game"]].newengine)?THREE.FrontSide:THREE.BackSide,
-			materialbasic=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: side, vertexColors: THREE.FaceColors}), materialbasicst=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: side, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
-			materialbasicsta=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: side, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
-			materialbasicsts=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: side, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false}),
-			materialbasicds=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: THREE.DoubleSide, vertexColors: THREE.FaceColors}), materialbasicstds=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: THREE.DoubleSide, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
-			materialbasicstads=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: THREE.DoubleSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
-			materialbasicstsds=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: THREE.DoubleSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false});
-
-			function getmesh(pos) {
+			function getcolmesh(pos,color) {
+				var group = new THREE.Group();
+				getcolpolydatalist(pos>>1).forEach(function(x){group.add(getcolpoly(x,color));});
+				return group;
+			}
+			
+			function getcolpoly(polydata,color) {
+				var group = new THREE.Group();
+				group.info=polydata;
+				var coords1= [polydata.pOrigin, polydata.p2, polydata.p3];
+				if (polydata.bouncing2==0x7FFF) {
+					group.add(getcoltriangle(coords1,color,false));
+					return group;
+				}
+				group.add(getcoltriangle(coords1,color,true));
+				var coords2=[polydata.p4, polydata.p3, polydata.p2];
+				group.add(getcoltriangle(coords2,color,true));
+				return group;
+			}
+			
+			function getcoltriangle(coords, color, gray) {
+				var group = new THREE.Group();
+				var geom = new THREE.BufferGeometry();
+				if (gray) {
+					geom.addAttribute('position', new THREE.BufferAttribute(new Float32Array(coords[1].concat(coords[0]).concat(coords[2])),3));
+					var glgeom=new THREE.BufferGeometry();
+					glgeom.addAttribute('position', new THREE.BufferAttribute(new Float32Array(coords[2].concat(coords[1])),3));
+					group.add(new THREE.Line(glgeom, glinecolor));
+				} else {
+					geom.addAttribute('position', new THREE.BufferAttribute(new Float32Array(coords[1].concat(coords[0]).concat(coords[2]).concat(coords[1])),3));
+				}
+				group.add(new THREE.Line(geom, blinecolor));
+				group.add(new THREE.Mesh(geom, colors[color]));
+				return group;
+			}
+			
+			function getcolpolydatalist(pos) {
+				var enabled=array16[pos++];
+				if (enabled!=1) return [];
+				var count=array16[pos++];
+				//console.log("count:"+count);
+				var unk=[array16[pos],array16[pos+1],array16[pos+2],array16[pos+3]];
+				pos+=4;
+				var res=new Array(count);
+				for (var i=0;i<count;i++) {
+					res[i]=games[urlvars["game"]].getcolpolydata(pos);
+					pos+=games[urlvars["game"]].colpolysize;
+				}
+				return res.concat(getcolpolydatalist(pos));
+			}
+			
+			function getcolpolydatats2(pos) {
+				return {activearea:[array16[pos+0],array16[pos+1],array16[pos+2],array16[pos+3]], pOrigin:[array16[pos+4],array16[pos+5],array16[pos+6]],p2:[array16[pos+4]+array16[pos+7],array16[pos+5]+array16[pos+8],array16[pos+6]+array16[pos+9]],p3:[array16[pos+4]+array16[pos+10],array16[pos+5]+array16[pos+11],array16[pos+6]+array16[pos+12]],p4:[array16[pos+4]+array16[pos+13],array16[pos+5]+array16[pos+14],array16[pos+6]+array16[pos+15]],inclinacion1:[array16[pos+16],array16[pos+18]], bouncing1:array16[pos+17],inclinacion2:[array16[pos+19],array16[pos+21]], bouncing2:array16[pos+20]};
+			}
+			
+			function getcolpolydatabugs(pos) {
+				return {unk1:[array16[pos+0],array16[pos+1],array16[pos+2]],pOrigin:[array16[pos+3],array16[pos+4],array16[pos+5]],p2:[array16[pos+3]+array16[pos+6],array16[pos+4]+array16[pos+7],array16[pos+5]+array16[pos+8]],p3:[array16[pos+3]+array16[pos+9],array16[pos+4]+array16[pos+10],array16[pos+5]+array16[pos+11]],unk2:[array16[pos+12],array16[pos+13],array16[pos+14],array16[pos+15]],
+				bouncing2:0x7FFF	//bouncing doesn't exist in bugs life, and polygons are single triangles. Set 0x7FFF -> second triangle doesn't exist.
+				};
+			}
+			
+			function getcolpolydatarascal(pos) {
+				pos32=pos-4>>1;		//rescal uses 32bit fields, and skips 4 words of "unk" data from getcolpolydatalist
+				return {pOrigin:[array32[pos32+0]/32,array32[pos32+1]/32,array32[pos32+2]/32],p2:[array32[pos32+3]/32,array32[pos32+4]/32,array32[pos32+5]/32],p3:[array32[pos32+6]/32,array32[pos32+7]/32,array32[pos32+8]/32],
+				bouncing2:0x7FFF	//bouncing doesn't exist in rascal, and polygons are single triangles. Set 0x7FFF -> second triangle doesn't exist.
+				};
+			}
+			
+			function getgfxmesh(pos) {
 				//console.log("start processing mesh at pos: "+pos.toString(16)+", psxe: "+postopsxe(pos));
 				var geom=new THREE.BufferGeometry(),color=[],position=[],uv=[],idx=0,flag,vrampag;
 				while ((array8u[pos+3]&0xF0)==0x30) {
 					for (let i=0;i<3;i++) color.push(Math.sin(array8u[pos++]*Math.PI/255));
 					flag=array8u[pos++];
 					var nv=(flag&8)?4:3,currposition=[],currcolor=[],curruv=[];
-					if (!games[urlvars["game"]].newengine) {	//TS2, BugsLife
+					if (!games[urlvars["game"]].newgfxengine) {	//TS2, BugsLife, Rascal
 						for (let i=0;i<nv;i++) {
 							for (let j=0;j<3;j++) {currposition.push(array16[pos>>1]); pos+=2;}
 							for (let j=0;j<2;j++) curruv.push(array8u[pos++]);
@@ -230,8 +342,8 @@
 					}
 					
 					switch(urlvars["hack"]) {
-						//case "blscuvfix": curruv=curruv.map(x=>x+0x40&0xFF); break;
-						case "wlnovc": color[color.length-1]=color[color.length-2]=color[color.length-3]=1; currcolor=currcolor.map(x=>1);
+						//case "blscuvfix": curruv=curruv.map(function(x)x+0x40&0xFF); break;
+						case "wlnovc": color[color.length-1]=color[color.length-2]=color[color.length-3]=1; currcolor.fill(1);
 					}
 					
 					if (nv==4) {
@@ -247,9 +359,9 @@
 						for (let i=0;i<3;i++) color.push(color[color.length-9]);
 						for (let i=3;i<9;i++) color.push(currcolor[i]);
 					} else {
-						currposition.forEach(x=>position.push(x));
-						curruv.forEach(x=>uv.push(x));
-						currcolor.forEach(x=>color.push(x));
+						currposition.forEach(function(x){position.push(x);});
+						curruv.forEach(function(x){uv.push(x);});
+						currcolor.forEach(function(x){color.push(x);});
 					}
 					var addedvertex=(nv===4)?6:nv;
 					geom.addGroup(idx,addedvertex,(flag&0x07)|((vrampag>>4)&8)); idx+=addedvertex;
@@ -262,9 +374,9 @@
 					geom.addAttribute('uv',new THREE.BufferAttribute(new Float32Array(uv), 2));
 				}
 				if (array32u[pos>>2]==2) {	//LOD mesh
-					if (urlvars["lod"]=="1") {
+					if (urlvars["lod"]=="y") {
 						console.log("HID data ignored at pos: "+pos.toString(16)+", psxe: "+postopsxe(pos));
-						return getmesh(pos+4);
+						return getgfxmesh(pos+4);
 					}
 					else console.log("LOD data ignored at pos: "+pos.toString(16)+", psxe: "+postopsxe(pos));
 				}
@@ -275,57 +387,109 @@
 			
 			function getentfromfile() {
 				if (model) scene.remove(model);
+				modelfromss=false;
 				model=new THREE.Group();
-				var pos=4, metadatapos=array32u[0]*2, nmesh=array32u[metadatapos>>2];
+				var currpos=4, metadatapos=array32u[0]*2, nmesh=array32u[metadatapos>>2], lastpos;
 				console.clear();
 				console.log("Input file has "+nmesh+" data groups");
-				var meshgroupsread=0;
+				var gfxgroupsread=0,colgroupsread=0;
 				metadatapos+=4;
 				for (let i=0;i<nmesh;i++) {
+					var pos=(array32u[metadatapos>>2])?currpos:lastpos;
 					switch (array32[metadatapos+0x10>>2]) {
-						case 0x01:		//mesh data group
-						var mesh=getmesh(pos);
+						case 0x01:		//gfx mesh data group
+						var mesh=getgfxmesh(pos);
 						mesh.position.x=array32[metadatapos+4>>2]; mesh.position.y=array32[metadatapos+8>>2]; mesh.position.z=array32[metadatapos+12>>2];
+						mesh.pointer=metadatapos; mesh.dgpointer=pos;	//Diagnostics on-click data
 						model.add(mesh);
-						meshgroupsread++;
+						gfxgroupsread++;
 						break;
-						case 0x011F: console.log("mesh joint data group found (ignored)"); break;
+						case 0x011F: console.log("gfx mesh joint data group found (ignored)"); break;
 						case 0x09: console.log("target position data group found (ignored)"); break;
+						case 0x06:	//collision data group
+						case 0x08:	//dynamic collision data group
+						var colpolylist=getcolpolydatalist(pos>>1);
+						var colmesh = getcolmesh(pos, Math.min(array8u[metadatapos+40],8));
+						colmesh.position.x=array32[metadatapos+4>>2]; colmesh.position.y=array32[metadatapos+8>>2]; colmesh.position.z=array32[metadatapos+12>>2];
+						colmesh.pointer=metadatapos; colmesh.dgpointer=pos;	//Diagnostics on-click data
+						model.add(colmesh);
+						colgroupsread++;
+						break;
 						default: console.warn("unknown data group (id=0x"+array32u[metadatapos+0x10>>2].toString(16)+") found (ignored)");
 					}
-					pos+=array32u[metadatapos>>2]*2;
+					if (array32u[metadatapos+0x4C>>2]) lastpos=currpos;
+					currpos+=array32u[metadatapos>>2]*2;
 					metadatapos+=0x4C;
 				}
 				model.scale.x=mult; model.scale.y=mult; model.scale.z=mult;
 				scene.add(model);
-				camera.position.x=0; camera.position.y=-100; camera.position.z=-200;
+				camera.position.x=0; camera.position.y=-4; camera.position.z=-8;
 				camera.rotation.x=Math.PI; camera.rotation.y=0; camera.rotation.z=0;
-				console.log(meshgroupsread+" mesh groups read");
-				return model;
+				console.log(gfxgroupsread+colgroupsread+" mesh groups read");
+				
+				["modetextured","modeuntextured","modewireframe"].forEach(function(x){document.getElementById(x).disabled=!gfxgroupsread;});
+				if (!texture) document.getElementById("modetextured").disabled=true;
+				document.getElementById("modecollision").disabled=!colgroupsread;
+				document.querySelector("input[name=mode]:not([disabled])").click();
 			}
 			
-			function getentfrommemory(inipos,size) {	//Do not support object translations!
+			function getcolmeshfromss(pos) {
+				var colmesh = getcolmesh(addtopos(array32u[16+pos>>2]),Math.min(array8u[pos+46],8));
+				colmesh.position.x=array32[pos>>2]/32; colmesh.position.y=array32[4+pos>>2]/32; colmesh.position.z=array32[8+pos>>2]/32;
+				colmesh.pointer=pos; colmesh.dgpointer=addtopos(array32u[16+pos>>2]);
+				return colmesh;
+			}
+			
+			function getcolmeshfromssrascal(pos) {
+				var pos32=pos>>2;
+				var colmesh = getcolmesh(addtopos(array32u[pos32+4]),0);
+				colmesh.position.x=array32[pos32+8]; colmesh.position.y=array32[pos32+9]; colmesh.position.z=array32[pos32+10];
+				colmesh.pointer=pos; colmesh.dgpointer=addtopos(array32u[pos32+4]);
+				return colmesh;
+			}
+			
+			function getcolfromss(pos) {
 				if (model) scene.remove(model);
+				modelfromss=true;
 				model=new THREE.Group();
-				for (let i=0;i<size;i++) {
-					var mesh=getmesh(addtopos(array32u[inipos>>2]));
-					model.add(mesh);
-					inipos+=games[urlvars["game"]].pointerdist;
+				while (array32u[16+pos>>2]!=0) {
+					model.add((games[urlvars["game"]].getcolmeshfromss || getcolmeshfromss)(pos));
+					pos+=games[urlvars["game"]].colpointerdist;
 				}
 				model.scale.x=mult; model.scale.y=mult; model.scale.z=mult;
 				scene.add(model);
-				camera.position.x=0; camera.position.y=-100; camera.position.z=-200;
+				camera.position.x=0; camera.position.y=-10; camera.position.z=-20;
 				camera.rotation.x=Math.PI; camera.rotation.y=0; camera.rotation.z=0;
-				return model;
+				
+				["modetextured","modeuntextured","modewireframe"].forEach(function(x){document.getElementById(x).disabled=true;});
+				document.getElementById("modecollision").disabled=false;
+				document.getElementById("modecollision").click();
+			}
+			
+			function getgfxfromss(mempos,size) {	//Do not support object translations!
+				if (model) scene.remove(model);
+				modelfromss=true;
+				model=new THREE.Group();
+				for (let i=0;i<size;i++) {
+					var meshdgpos=addtopos(array32u[mempos>>2]), mesh=getgfxmesh(meshdgpos);
+					mesh.pointer=mempos; mesh.dgpointer=meshdgpos;	//Diagnostics on-click data
+					model.add(mesh);
+					mempos+=games[urlvars["game"]].gfxpointerdist;
+				}
+				model.scale.x=mult; model.scale.y=mult; model.scale.z=mult;
+				scene.add(model);
+				camera.position.x=0; camera.position.y=-10; camera.position.z=-20;
+				camera.rotation.x=Math.PI; camera.rotation.y=0; camera.rotation.z=0;
+				
+				["modetextured","modeuntextured","modewireframe"].forEach(function(x){document.getElementById(x).disabled=false;});
+				if (!texture) document.getElementById("modetextured").disabled=true;
+				document.getElementById("modecollision").disabled=true;
+				document.querySelector("input[name=mode]:not([disabled])").click();
 			}
 			
 			function loaded() {
 				document.getElementById("progresscontainer").style.display="none";
 				window.addEventListener( 'resize', onWindowResize, false );
-				texture = getPalTextures();
-				texture.flipY=true; texture.flipX=true;
-				//texture.magFilter=THREE.LinearFilter;
-				texture.needsUpdate=true;
 				materialtex=new THREE.MeshBasicMaterial({side: side, map: texture, wireframe: false, alphaTest:0.5, vertexColors: THREE.FaceColors});
 				materialtexst=new THREE.MeshBasicMaterial({side: side, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 0.5, depthWrite: false});
 				materialtexsta=new THREE.MeshBasicMaterial({side: side, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false});
@@ -334,26 +498,25 @@
 				materialtexstds=new THREE.MeshBasicMaterial({side: THREE.DoubleSide, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 0.5, depthWrite: false});
 				materialtexstads=new THREE.MeshBasicMaterial({side: THREE.DoubleSide, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false});
 				materialtexstsds=new THREE.MeshBasicMaterial({side: THREE.DoubleSide, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, depthWrite: false});
-				allsize=urlvars["allsize"];
-				model=null;
-				if (urlvars["pointer"]) model=getentfrommemory(psxetopos(parseInt(urlvars["pointer"])),parseInt(urlvars["size"]));
-				//document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+				
+				if (urlvars["sscol"]=="y") getcolfromss(games[urlvars["game"]].coliniarea);
+				else if (urlvars["gfxpointer"]) getgfxfromss(psxetopos(parseInt(urlvars["gfxpointer"])),parseInt(urlvars["gfxsize"]));
+				document.addEventListener('mousedown', onDocumentMouseDown, false);
 				
 				document.querySelector('input').addEventListener('change', function() {
 					var reader = new FileReader();
 					reader.onload = function() {
-						var arrayBuffer = this.result;
+						arrayBuffer = this.result;
 						array8u = new Uint8Array(arrayBuffer);
 						array16 = new Int16Array(arrayBuffer);
 						array16u = new Uint16Array(arrayBuffer);
 						array32 = new Int32Array(arrayBuffer);
 						array32u = new Uint32Array(arrayBuffer);
-						allsize=array8u.length-192;
 						getentfromfile();
 					}
 					reader.readAsArrayBuffer(this.files[0]);
 				}, false);
-				["loadfilebutton","modetextured","modeuntextured","modewireframe"].forEach(x=>document.getElementById(x).disabled=false);
+				document.getElementById("loadfilebutton").disabled = false;
 				
 				var controls = new THREE.FlyControls( camera, renderer.domElement );
 				var t=performance.now();

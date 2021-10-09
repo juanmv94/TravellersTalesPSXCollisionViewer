@@ -29,7 +29,7 @@
 				"mrm": {"clut": addtopos(0x800DFF00),"bkgd": 3072, "bkgx": 1, "bkgy": 1,"thumbsp": 4, "getgfxo": getgfxots2}
 			};
 		
-			var mult=urlvars["mult"]||0.025;
+			var mult=urlvars["mult"]||0.0035;
 			
 			var arrayBuffer;
 			var oReq = new XMLHttpRequest();
@@ -203,9 +203,9 @@
 			}
 			
 			var texture,textureba,materialtex,materialtexst,materialtexsta,materialtexsts,sprites=[],
-			materialbasic=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors}), materialbasicst=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
-			materialbasicsta=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
-			materialbasicsts=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false});
+			materialbasic=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors}), materialbasicst=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
+			materialbasicsta=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
+			materialbasicsts=new THREE.MeshPhongMaterial({ color:0xFFFFFF, flatShading: true, side: (urlvars["ds"]=="y")?THREE.DoubleSide:THREE.FrontSide, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false});
 			
 			function getscenario(pos) {		//Returns the full level scenario
 				var group = new THREE.Group();
@@ -441,7 +441,7 @@
 						  new THREE.Vector2(f.p3x/8192+(f.textmap&0x1F)*0.03125, 1-f.p3y/256),
 						  new THREE.Vector2(f.p4x/8192+(f.textmap&0x1F)*0.03125, 1-f.p4y/256)
 						]);
-						if (f.flags&0x02 && (urlvars["ds"][0]!="y")) {	//doubleside
+						if (f.flags&0x02 && (urlvars["ds"]!="y")) {	//doubleside
 							var face=new THREE.Face3(f.p3,f.p2,f.p1);
 							face.vertexColors[0] = points[f.p3].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p1].color;
 							geom.faces.push(face);
@@ -469,7 +469,7 @@
 						  new THREE.Vector2(f.p1x/8192+(f.textmap&0x1F)*0.03125, 1-f.p1y/256),
 						  new THREE.Vector2(f.p2x/8192+(f.textmap&0x1F)*0.03125, 1-f.p2y/256-((f.p2y==f.p4y && f.p2y==f.p3y)?(1/256):0))
 						]);
-						if (f.flags&0x02 && (urlvars["ds"][0]!="y")) {	//doubleside
+						if (f.flags&0x02 && (urlvars["ds"]!="y")) {	//doubleside
 							var face=new THREE.Face3(f.p3,f.p2,f.p4);
 							face.vertexColors[0] = points[f.p3].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p4].color;
 							geom.faces.push(face);
@@ -499,7 +499,7 @@
 						face.vertexColors[0] = points[f.p1].color; face.vertexColors[1] = points[f.p3].color; face.vertexColors[2] = points[f.p4].color;
 						geom.faces.push(face);
 					}
-					if (f.flags&0x02 && (urlvars["ds"][0]!="y")) {	//doubleside
+					if (f.flags&0x02 && (urlvars["ds"]!="y")) {	//doubleside
 						var face=new THREE.Face3(f.p3,f.p2,f.p1);
 						face.vertexColors[0] = points[f.p3].color; face.vertexColors[1] = points[f.p2].color; face.vertexColors[2] = points[f.p1].color;
 						geom.faces.push(face);
@@ -532,22 +532,22 @@
 				//texture.magFilter=THREE.LinearFilter;
 				texture.needsUpdate=true;
 				materialtex=new THREE.MeshBasicMaterial({
-					side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
+					side: (urlvars["ds"]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
 					wireframe: false, alphaTest:0.5,
 					vertexColors: THREE.FaceColors
 				});
 				materialtexst=new THREE.MeshBasicMaterial({
-					side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
+					side: (urlvars["ds"]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
 					wireframe: false, transparent:true,
 					vertexColors: THREE.FaceColors, opacity: 0.5, depthWrite: false
 				});
 				materialtexsta=new THREE.MeshBasicMaterial({
-					side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
+					side: (urlvars["ds"]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
 					wireframe: false, transparent:true,
 					vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false
 				});
 				materialtexsts=new THREE.MeshBasicMaterial({
-					side: (urlvars["ds"][0]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
+					side: (urlvars["ds"]=="y")?THREE.DoubleSide:THREE.FrontSide, map: texture,
 					wireframe: false, transparent:true,
 					vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, depthWrite: false
 				});
@@ -575,7 +575,7 @@
 				var model=getscenario(psxetopos(parseInt(urlvars["gfxpointer"])));
 				scene.add(model);
 				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
-				camera.position.x=0; camera.position.y=-100; camera.position.z=0;
+				camera.position.x=0; camera.position.y=-15; camera.position.z=0;
 				camera.rotation.x=0.5; camera.rotation.y=-1; camera.rotation.z=3.5;
 
 				var controls = new THREE.FlyControls( camera, renderer.domElement );
