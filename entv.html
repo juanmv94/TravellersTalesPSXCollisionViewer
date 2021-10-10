@@ -7,7 +7,7 @@
 			center {position:absolute;display: table; height: 100%; width: 100%; color: white;}
 			h1 {display: table-cell; vertical-align: middle;}
 			button {position: fixed; width: 140px; height: 26px; margin: 4px; background-color: #FFFFFF77; color: black; border: 2px solid #00000077; border-radius: 10px;}
-			div {position: fixed; margin: 4px; right:0;}
+			div {position: fixed; margin: 4px; right:0; text-align:right}
 		</style>
 	</head>
 	<body>
@@ -19,6 +19,12 @@
 		<input type="radio" id="modetextured" name="mode" value="Textured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(function(x){x.visible=true; x.wireframe=false;x.map=texture;x.needsUpdate=true;}); blinecolor.visible=false; glinecolor.visible=false; colors.forEach(function(x){x.visible=false;}); setWireframe(model,false);selectedObj=null;" disabled><label for="Textured">Textured</label>
 		<input type="radio" id="modeuntextured" name="mode" value="Untextured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(function(x){x.visible=true; x.wireframe=false;x.map=null;x.needsUpdate=true;}); blinecolor.visible=false; glinecolor.visible=false; colors.forEach(function(x){x.visible=false;}); setWireframe(model,false);selectedObj=null;" disabled><label for="Untextured">Untextured</label>
 		<input type="radio" id="modewireframe" name="mode" value="Wireframe" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(function(x){x.visible=true; x.wireframe=true;x.map=null;x.needsUpdate=true;}); blinecolor.visible=false; glinecolor.visible=false; colors.forEach(function(x){x.visible=false;}); setWireframe(model,false);selectedObj=null;" disabled><label for="Wireframe">Wireframe</label>
+		</div>
+		<div style="bottom:0; font-family: monospace;">
+		W,A,S,D: move<br/>
+		&larr;,&uarr;,&rarr;,&darr;,Q,E: turn<br/>
+		Left click: toggle mouse look<br/>
+		Right click: entity select + info
 		</div>
 		<script src="three.min.js"></script>
 		<script src="FlyControls.js"></script>
@@ -71,7 +77,7 @@
 				new THREE.MeshPhongMaterial({color:0xffff00, flatShading: true}),	//7= BLSC: slippery 3
 				new THREE.MeshPhongMaterial({color:0xffffff, flatShading: true})];	//def= TS2: normal,  BLSC: normal
 			
-			var texture=null,textureba,materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds,side=(urlvars["ds"]=="y")?THREE.DoubleSide:(games[urlvars["game"]].newgfxengine)?THREE.FrontSide:THREE.BackSide,
+			var texture=null,textureba,materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds,side=(urlvars["ds"]=="y")?THREE.DoubleSide:THREE.FrontSide,
 			materialbasic=new THREE.MeshBasicMaterial({ color:0xFFFFFF, side: side, vertexColors: THREE.FaceColors}), materialbasicst=new THREE.MeshBasicMaterial({ color:0xFFFFFF, side: side, vertexColors: THREE.FaceColors, opacity: 0.5, transparent: true, depthWrite: false}),
 			materialbasicsta=new THREE.MeshBasicMaterial({ color:0xFFFFFF, side: side, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false}),
 			materialbasicsts=new THREE.MeshBasicMaterial({ color:0xFFFFFF, side: side, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, transparent: true, depthWrite: false}),
@@ -133,35 +139,27 @@
 			}
 			
 			function onDocumentMouseDown(event) {
-				if (!model) return;
-				if (event.button!=0) {setWireframe(model,false);selectedObj=null;return;}
+				if (!model || event.button==0) return;
+				if (selectedObj || event.button==1) {setWireframe(model,false);selectedObj=null;return;}
 				var raycaster=new THREE.Raycaster(), mouse=new THREE.Vector2((event.clientX/window.innerWidth)*2-1, -(event.clientY/window.innerHeight)*2+1);
 				raycaster.setFromCamera(mouse, camera);
-				var intersects = raycaster.intersectObjects(model.children, true).filter(function(x){return (x.object instanceof THREE.Mesh) && ((colors.indexOf(x.object.material)>=0) ^ (!blinecolor.visible));});
-				if (intersects.length > 0){
-					var obj=intersects[0].object.parent.parent.parent
-					if (!obj) obj=intersects[0].object;
-					if (obj==selectedObj) {
-					 setWireframe(model,false);
-					 selectedObj=null;
-					} else {
-						setWireframe(model,true);
-						setWireframe(obj,false);
-						selectedObj=obj;
-						if (modelfromss) {
-							console.log("Selected object at add: 0x"+postoadd(obj.pointer)+", emu: 0x"+postopsxe(obj.pointer));
-							console.log("Datagroup at add: 0x"+postoadd(obj.dgpointer)+", emu: 0x"+postopsxe(obj.dgpointer));
-						}
-						else {
-							console.log("Selected object at pos: 0x"+obj.pointer.toString(16));
-							console.log("Datagroup at add: 0x"+obj.dgpointer.toString(16));
-						}
-						//console.log(intersects[0].object.parent.parent.info);	//Clicked col polygon information
-						console.log(obj);
+				var intersects = raycaster.intersectObjects(model.children, true).filter(function(x){return (x.object instanceof THREE.Mesh) && ((colors.indexOf(x.object.material)>=0) ^ (!blinecolor.visible));});	//intersected meshes with visible material
+				if (intersects.length > 0) {
+					var obj=intersects[0].object.parent.parent.parent	//Colision mesh
+					if (!obj) obj=intersects[0].object;					//GFX mesh
+					setWireframe(model,true);
+					setWireframe(obj,false);
+					selectedObj=obj;
+					if (modelfromss) {
+						console.log("Selected object at add: 0x"+postoadd(obj.pointer)+", emu: 0x"+postopsxe(obj.pointer));
+						console.log("Datagroup at add: 0x"+postoadd(obj.dgpointer)+", emu: 0x"+postopsxe(obj.dgpointer));
 					}
-				} else {
-					setWireframe(model,false);
-					selectedObj=null;
+					else {
+						console.log("Selected object at pos: 0x"+obj.pointer.toString(16));
+						console.log("Datagroup at pos: 0x"+obj.dgpointer.toString(16));
+					}
+					//console.log(intersects[0].object.parent.parent.info);	//Clicked col polygon information
+					console.log(obj);
 				}
 			}
 			
@@ -314,18 +312,18 @@
 			
 			function getgfxmesh(pos) {
 				//console.log("start processing mesh at pos: "+pos.toString(16)+", psxe: "+postopsxe(pos));
-				var geom=new THREE.BufferGeometry(),color=[],position=[],uv=[],idx=0,flag,vrampag;
+				var geom=new THREE.BufferGeometry(),color=[],position=[],uv=[],idx=0,vrampag;
 				while ((array8u[pos+3]&0xF0)==0x30) {
-					for (let i=0;i<3;i++) color.push(Math.sin(array8u[pos++]*Math.PI/255));
-					flag=array8u[pos++];
-					var nv=(flag&8)?4:3,currposition=[],currcolor=[],curruv=[];
+					var currposition=[],currcolor=[],curruv=[];
+					for (let i=0;i<3;i++) currcolor.push(Math.sin(array8u[pos++]*Math.PI/255));
+					var flag=array8u[pos++],nv=(flag&8)?4:3;
 					if (!games[urlvars["game"]].newgfxengine) {	//TS2, BugsLife, Rascal
 						for (let i=0;i<nv;i++) {
-							for (let j=0;j<3;j++) {currposition.push(array16[pos>>1]); pos+=2;}
-							for (let j=0;j<2;j++) curruv.push(array8u[pos++]);
+							currposition.unshift(array16[pos>>1], array16[pos+2>>1], array16[pos+4>>1]); pos+=6;
+							curruv.unshift(array8u[pos++],array8u[pos++]);
 						}
 						for (let i=1;i<nv;i++) {
-							for (let j=0;j<3;j++) currcolor.push(Math.sin(array8u[pos++]*Math.PI/255));
+							currcolor.unshift(Math.sin(array8u[pos++]*Math.PI/255), Math.sin(array8u[pos++]*Math.PI/255), Math.sin(array8u[pos++]*Math.PI/255));
 							pos++;
 						}
 						vrampag=array8u[pos-1];
@@ -355,9 +353,9 @@
 						for (let i=0;i<2;i++) uv.push(curruv[i]);
 						for (let i=4;i<8;i++) uv.push(curruv[i]);
 						
-						for (let i=0;i<6;i++) color.push(currcolor[i]);
-						for (let i=0;i<3;i++) color.push(color[color.length-9]);
-						for (let i=3;i<9;i++) color.push(currcolor[i]);
+						for (let i=0;i<9;i++) color.push(currcolor[i]);
+						for (let i=0;i<3;i++) color.push(currcolor[i]);
+						for (let i=6;i<12;i++) color.push(currcolor[i]);
 					} else {
 						currposition.forEach(function(x){position.push(x);});
 						curruv.forEach(function(x){uv.push(x);});
@@ -398,24 +396,26 @@
 					var pos=(array32u[metadatapos>>2])?currpos:lastpos;
 					switch (array32[metadatapos+0x10>>2]) {
 						case 0x01:		//gfx mesh data group
+						gfxgroupsread++;
 						var mesh=getgfxmesh(pos);
 						mesh.position.x=array32[metadatapos+4>>2]; mesh.position.y=array32[metadatapos+8>>2]; mesh.position.z=array32[metadatapos+12>>2];
 						mesh.pointer=metadatapos; mesh.dgpointer=pos;	//Diagnostics on-click data
 						model.add(mesh);
-						gfxgroupsread++;
 						break;
 						case 0x011F: console.log("gfx mesh joint data group found (ignored)"); break;
 						case 0x09: console.log("target position data group found (ignored)"); break;
+						case 0x0101: console.log("infinite wall collision data group found (ignored)"); break;
+						case 0x0104: console.log("collision footer data group found (ignored)"); break;	//Always at the end of collision ALL files. It's 16 bytes length and edit it or remove it has no noticeable effect
 						case 0x06:	//collision data group
 						case 0x08:	//dynamic collision data group
-						var colpolylist=getcolpolydatalist(pos>>1);
+						colgroupsread++;
+						if ((!(array8u[metadatapos+41]&0x04) && urlvars["lod"]=="y") || ((array8u[metadatapos+41]&0x04) && urlvars["lod"]=="n")) break;
 						var colmesh = getcolmesh(pos, Math.min(array8u[metadatapos+40],8));
 						colmesh.position.x=array32[metadatapos+4>>2]; colmesh.position.y=array32[metadatapos+8>>2]; colmesh.position.z=array32[metadatapos+12>>2];
 						colmesh.pointer=metadatapos; colmesh.dgpointer=pos;	//Diagnostics on-click data
 						model.add(colmesh);
-						colgroupsread++;
 						break;
-						default: console.warn("unknown data group (id=0x"+array32u[metadatapos+0x10>>2].toString(16)+") found (ignored)");
+						default: console.warn("unknown data group (id=0x"+array32u[metadatapos+0x10>>2].toString(16)+") found (ignored) pos: 0x"+metadatapos.toString(16)+" dgpos: 0x"+pos.toString(16)+" size: "+array32u[metadatapos>>2]*2);
 					}
 					if (array32u[metadatapos+0x4C>>2]) lastpos=currpos;
 					currpos+=array32u[metadatapos>>2]*2;
@@ -453,7 +453,7 @@
 				modelfromss=true;
 				model=new THREE.Group();
 				while (array32u[16+pos>>2]!=0) {
-					model.add((games[urlvars["game"]].getcolmeshfromss || getcolmeshfromss)(pos));
+					if (!((!(array8u[pos+47]&0x04) && urlvars["lod"]=="y") || ((array8u[pos+47]&0x04) && urlvars["lod"]=="n"))) model.add((games[urlvars["game"]].getcolmeshfromss || getcolmeshfromss)(pos));
 					pos+=games[urlvars["game"]].colpointerdist;
 				}
 				model.scale.x=mult; model.scale.y=mult; model.scale.z=mult;

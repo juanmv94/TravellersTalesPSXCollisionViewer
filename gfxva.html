@@ -6,10 +6,16 @@
 			canvas { width: 100%; height: 100% }
 			center {position:absolute;display: table; height: 100%; width: 100%; color: white;}
 			h1 {display: table-cell; vertical-align: middle;}
+			div {position: fixed; margin: 4px; right:0; text-align:right}
 		</style>
 	</head>
 	<body>
 		<center id="progresscontainer"><h1 id="progress">Loading SaveState file</h1></center>
+		<div style="bottom:0; font-family: monospace; color: white;">
+		W,A,S,D: move<br/>
+		&larr;,&uarr;,&rarr;,&darr;,Q,E: turn<br/>
+		Left click: toggle mouse look<br/>
+		</div>
 		<script src="three.min.js"></script>
 		<script src="FlyControls.js"></script>
 		<script>

@@ -21,7 +21,7 @@ THREE.FlyControls = function ( object, domElement ) {
 	this.movementSpeed = 0.015;
 	this.rollSpeed = 0.0005;
 
-	this.dragToLook = false;
+	this.dragToLook = true;
 	this.autoForward = false;
 
 	// disable default target object behavior
@@ -30,7 +30,7 @@ THREE.FlyControls = function ( object, domElement ) {
 
 	this.tmpQuaternion = new THREE.Quaternion();
 
-	this.mouseStatus = 0;
+	this.mouseStatus = 1;
 
 	this.moveState = { up: 0, down: 0, left: 0, right: 0, forward: 0, back: 0, pitchUp: 0, pitchDown: 0, yawLeft: 0, yawRight: 0, rollLeft: 0, rollRight: 0 };
 	this.moveVector = new THREE.Vector3( 0, 0, 0 );
@@ -59,8 +59,8 @@ THREE.FlyControls = function ( object, domElement ) {
 			case 82: /*R*/ this.moveState.up = 1; break;
 			case 70: /*F*/ this.moveState.down = 1; break;
 
-			case 38: /*up*/ this.moveState.pitchUp = 1; break;
-			case 40: /*down*/ this.moveState.pitchDown = 1; break;
+			case 40: /*down*/ this.moveState.pitchUp = 1; break;
+			case 38: /*up*/ this.moveState.pitchDown = 1; break;
 
 			case 37: /*left*/ this.moveState.yawLeft = 1; break;
 			case 39: /*right*/ this.moveState.yawRight = 1; break;
@@ -90,8 +90,8 @@ THREE.FlyControls = function ( object, domElement ) {
 			case 82: /*R*/ this.moveState.up = 0; break;
 			case 70: /*F*/ this.moveState.down = 0; break;
 
-			case 38: /*up*/ this.moveState.pitchUp = 0; break;
-			case 40: /*down*/ this.moveState.pitchDown = 0; break;
+			case 40: /*down*/ this.moveState.pitchUp = 0; break;
+			case 38: /*up*/ this.moveState.pitchDown = 0; break;
 
 			case 37: /*left*/ this.moveState.yawLeft = 0; break;
 			case 39: /*right*/ this.moveState.yawRight = 0; break;
@@ -107,7 +107,7 @@ THREE.FlyControls = function ( object, domElement ) {
 	};
 
 	this.mousedown = function ( event ) {
-
+		if (event.button!=0) return;
 		if ( this.domElement !== document ) {
 
 			this.domElement.focus();
@@ -118,8 +118,8 @@ THREE.FlyControls = function ( object, domElement ) {
 		event.stopPropagation();
 
 		if ( this.dragToLook ) {
-
-			this.mouseStatus ++;
+			this.mouseStatus=!this.mouseStatus;
+			//this.mouseStatus ++;
 
 		} else {
 
@@ -154,13 +154,13 @@ THREE.FlyControls = function ( object, domElement ) {
 	};
 
 	this.mouseup = function ( event ) {
-
+		if (event.button!=0) return;
 		event.preventDefault();
 		event.stopPropagation();
 
 		if ( this.dragToLook ) {
 
-			this.mouseStatus --;
+			//this.mouseStatus --;
 
 			this.moveState.yawLeft = this.moveState.pitchDown = 0;
 
@@ -260,26 +260,24 @@ THREE.FlyControls = function ( object, domElement ) {
 	this.dispose = function () {
 
 		this.domElement.removeEventListener( 'contextmenu', contextmenu, false );
-		//this.domElement.removeEventListener( 'mousedown', _mousedown, false );
+		this.domElement.removeEventListener( 'mousedown', _mousedown, false );
 		this.domElement.removeEventListener( 'mousemove', _mousemove, false );
-		//this.domElement.removeEventListener( 'mouseup', _mouseup, false );
-
+		this.domElement.removeEventListener( 'mouseup', _mouseup, false );
 		window.removeEventListener( 'keydown', _keydown, false );
 		window.removeEventListener( 'keyup', _keyup, false );
-
 	};
 
 	var _mousemove = bind( this, this.mousemove );
-	//var _mousedown = bind( this, this.mousedown );
-	//var _mouseup = bind( this, this.mouseup );
+	var _mousedown = bind( this, this.mousedown );
+	var _mouseup = bind( this, this.mouseup );
 	var _keydown = bind( this, this.keydown );
 	var _keyup = bind( this, this.keyup );
 
 	this.domElement.addEventListener( 'contextmenu', contextmenu, false );
 
 	this.domElement.addEventListener( 'mousemove', _mousemove, false );
-	//this.domElement.addEventListener( 'mousedown', _mousedown, false );
-	//this.domElement.addEventListener( 'mouseup', _mouseup, false );
+	this.domElement.addEventListener( 'mousedown', _mousedown, false );
+	this.domElement.addEventListener( 'mouseup', _mouseup, false );
 
 	window.addEventListener( 'keydown', _keydown, false );
 	window.addEventListener( 'keyup', _keyup, false );
