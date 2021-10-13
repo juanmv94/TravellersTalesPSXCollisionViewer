@@ -1,0 +1,1 @@
+gcc -O2 -e _WinMain RAWenc.c -o RAWenc.exe
