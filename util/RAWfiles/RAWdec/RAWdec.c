@@ -1,5 +1,7 @@
 //////Travellers Tales RAW decompression tool by @Juanmv94////////
 
+#define __USE_MINGW_ANSI_STDIO 1
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -39,7 +41,7 @@ void writefile(char* outputname, int size, char* content) {
 	fprintf(list,"%s\n",outputname);
 }
 
-void getbmp4(char* inp, int uncompressedSize) {
+void getbmp4(char* inp) {
 	char outputname[32];
 	unsigned char bmp[2166]={0x42,0x4D,0x76,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x76,0x00,0x00,0x00,0x28,0x00,0x00,0x00,0x40,0x00,0x00,0x00,0x40,0x00,0x00,0x00,0x01,0x00,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x08,0x00,0x00,0x13,0x0B,0x00,0x00,0x13,0x0B,0x00,0x00,0x10,0x00,0x00,0x00,0x10,0x00,0x00,0x00};
 	for (unsigned char x=0;x<4;x++) for (unsigned char y=0;y<4;y++){
@@ -52,10 +54,26 @@ void getbmp4(char* inp, int uncompressedSize) {
 	}
 }
 
-void getbmp16(char* inp, int uncompressedSize) {
+void getbmp8(char* inp) {
+	char outputname[32];
+	const unsigned char bmpheader[54]={0x42,0x4D,0x36,0x05,0x00,0x00,0x00,0x00,0x00,0x00,0x36,0x04,0x00,0x00,0x28,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x13,0x0B,0x00,0x00,0x13,0x0B,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x01,0x00,0x00};
+	unsigned long width=((unsigned short*)inp)[4], height=((unsigned short*)inp)[5], sizebm=width*height, sizebmp=54+256*4+sizebm;
+	unsigned char *bmp=malloc(sizebmp); memcpy(bmp,bmpheader,54);
+	memcpy(&bmp[2],&sizebmp,4); memcpy(&bmp[18],&width,4); memcpy(&bmp[22],&height,4); memcpy(&bmp[34],&sizebm,4);
+	for (int y=0;y<height;y++) {
+		unsigned char *pal=&inp[16],*bm=&inp[16+768];
+		for (int i=0;i<256;i++) {bmp[54+i*4]=pal[2+i*3]; bmp[55+i*4]=pal[1+i*3]; bmp[56+i*4]=pal[0+i*3]; bmp[57+i*4]=0;}	//PAL
+		for (int i=0;i<height;i++) memcpy(&bmp[sizebmp-width-i*width],&bm[i*width],width);									//BM
+	}
+	sprintf(outputname,"TEX_ID_%u_8BIT.BMP",((unsigned int*)inp)[1]);
+	writefile(outputname,sizebmp,bmp);
+	free(bmp);
+}
+
+void getbmp16(char* inp) {
 	char outputname[32];
 	const unsigned char bmpheader[54]={0x42,0x4D,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x36,0x00,0x00,0x00,0x28,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x18,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-	unsigned long width=((unsigned int*)inp)[1], height=((unsigned int*)inp)[2], sizebm=width*height*3, sizebmp=sizebm+54;
+	unsigned long width=((unsigned int*)inp)[1], height=((unsigned int*)inp)[2], sizebm=width*height*3, sizebmp=54+sizebm;
 	unsigned char *bmp=malloc(sizebmp); memcpy(bmp,bmpheader,54);
 	memcpy(&bmp[2],&sizebmp,4); memcpy(&bmp[18],&width,4); memcpy(&bmp[22],&height,4); memcpy(&bmp[34],&sizebm,4);
 	for (int y=0;y<height;y++) {
@@ -64,9 +82,20 @@ void getbmp16(char* inp, int uncompressedSize) {
 		for (int x=0;x<width;x++) {to[x*3+2]=(from[x]&0x1F)<<3; to[x*3+1]=(from[x]&0x03E0)>>2; to[x*3]=(from[x]&0x7C00)>>7;}
 		//to[x]=((from[x]&0x1F)<<11)|((from[x]&0x7C00)>>10)|((from[x]&0x03E0)<<1);
 	}
-	sprintf(outputname,"TEX_%03hhu.BMP",inp[0]);
+	sprintf(outputname,"TEX_ID_%u_16BIT.BMP",((unsigned int*)inp)[3]);
 	writefile(outputname,sizebmp,bmp);
 	free(bmp);
+}
+
+void getentdatats2(char* inp) {
+	char csv[64*1024]="POS_X (S32);POS_Y (S32);POS_Z (S32); CREATURE_ID (U8); MOV_CTRL? (U8); ROT_SPEED (U8); COLLECTABLE ID?=0 (U8); ENT_CTRL (U32); MOV_DIST_X(S16); MOV_DIST_X(S16); UNK=0(U16); DEFENSE_MODE(U16); LATERAL_SPEED_NOTARGET(U8); LATERAL_SPEED_TARGET(U8); SPEED_NOTARGET(U8); SPEED_TARGET(U8)\n";
+	char *ip=inp+4, *op=csv+strlen(csv);
+	int newcharacters;
+	while(ip[12]) {	//while creature id!=0
+		sprintf(op,"%d;%d;%d;%hhu;%hhu;%hhu;%hhu;%u;%hd;%hd;%hu;%hu;%hhu;%hhu;%hhu;%hhu\n%n",*(int*)(ip),*(int*)(ip+4),*(int*)(ip+8),ip[12],ip[13],ip[14],ip[15],*(unsigned int*)(ip+16),*(short*)(ip+20),*(short*)(ip+22),*(unsigned short*)(ip+24),*(unsigned short*)(ip+26),ip[28],ip[29],ip[30],ip[31],&newcharacters);
+		ip+=32; op+=newcharacters;
+	}
+	writefile("ENTDATA_TS2.CSV",op-csv,csv);
 }
 
 int main(int argc, char** argv) {
@@ -104,11 +133,21 @@ int main(int argc, char** argv) {
 				}
 				break;
 			}
-			case 0x00: {	//GFX
-				switch(*(int*)(o+8)) {
-					case 0x0100: getbmp16(o,uncompressedSize); break;
-					case 0x0300: if (uncompressedSize==33548) {getbmp4(o,uncompressedSize); break;}
-					default: sprintf(outputname,"TEX_FILENO_%03d.TEX",counter); writefile(outputname,uncompressedSize,o);
+			case 0x00: {	//GFX / ENTDATA
+				switch(o[0]) {
+					case 0x25: getbmp16(o); break;
+					case 0x24: getbmp8(o); break;
+					case 0x23: {	//ENTDATA
+						switch (uncompressedSize) {
+							case 2052: getentdatats2(o); break;	//TS2: 32 no data at end
+							case 1796:							//bugs 28 data at end
+							case 8196:							//blsc 64 data at end
+							default: writefile("ENTDATA.BIN",uncompressedSize,o);
+						}
+						break;
+					}
+					case 0x22: sprintf(outputname,"TEX_FILENO_%03d.TEX",counter); writefile(outputname,uncompressedSize,o); break; //TODO TEX
+					default: if (uncompressedSize==33548) getbmp4(o); else {sprintf(outputname,"TEX_FILENO_%03d.TEX",counter); writefile(outputname,uncompressedSize,o);}
 				}
 				break;
 			}
