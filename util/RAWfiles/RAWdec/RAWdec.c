@@ -91,7 +91,7 @@ void getentdatats2(char* inp) {
 	char csv[64*1024]="POS_X (S32);POS_Y (S32);POS_Z (S32); CREATURE_ID (U8); MOV_CTRL? (U8); ROT_SPEED (U8); COLLECTABLE ID?=0 (U8); ENT_CTRL (U32); MOV_DIST_X(S16); MOV_DIST_X(S16); UNK=0(U16); DEFENSE_MODE(U16); LATERAL_SPEED_NOTARGET(U8); LATERAL_SPEED_TARGET(U8); SPEED_NOTARGET(U8); SPEED_TARGET(U8)\n";
 	char *ip=inp+4, *op=csv+strlen(csv);
 	int newcharacters;
-	while(ip[12]) {	//while creature id!=0
+	for (int n=0;n<64;n++) {
 		sprintf(op,"%d;%d;%d;%hhu;%hhu;%hhu;%hhu;%u;%hd;%hd;%hu;%hu;%hhu;%hhu;%hhu;%hhu\n%n",*(int*)(ip),*(int*)(ip+4),*(int*)(ip+8),ip[12],ip[13],ip[14],ip[15],*(unsigned int*)(ip+16),*(short*)(ip+20),*(short*)(ip+22),*(unsigned short*)(ip+24),*(unsigned short*)(ip+26),ip[28],ip[29],ip[30],ip[31],&newcharacters);
 		ip+=32; op+=newcharacters;
 	}

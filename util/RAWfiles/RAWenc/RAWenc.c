@@ -102,7 +102,7 @@ void setentnoid(char* filename, int type) {
 }
 
 void setentdatats2(char* filename) {
-	char data[2052]={0x23,0};
+	char data[2052+32]={0x23,0};
 	FILE *in=fopen(filename,"r");
 	char *p=data+4;
 	fscanf(in,"%*[^\n]\n");
