@@ -6,20 +6,27 @@
 			canvas { width: 100%; height: 100% }
 			center {position:absolute;display: table; height: 100%; width: 100%; color: white;}
 			h1 {display: table-cell; vertical-align: middle;}
-			button {position: fixed; width: 140px; height: 26px; margin: 4px; background-color: #FFFFFF77; color: black; border: 2px solid #00000077; border-radius: 10px;}
-			div {position: fixed; margin: 4px; right:0; text-align:right}
+			div {position: fixed; margin: 4px; right:0; text-align:right;}
+			#buttons {left:0; text-align:left;}
+			button {width: 140px; height: 26px; margin: 4px; background-color: #FFFFFF77; color: black; border: 2px solid #00000077; border-radius: 10px;}
+			#anmradios {left:0; bottom:0; text-align:left;}
 		</style>
 	</head>
 	<body>
 		<center id="progresscontainer"><h1 id="progress">Loading SaveState file</h1></center>
-		<button id="loadfilebutton" onclick="document.querySelector('input').click()" disabled>Load .ALL / .MDL</button>
-		<input type="file" accept=".ALL,.MDL" style="display:none">
+		<div id="buttons">
+		<button id="loadfilebutton" onclick="allfile.click()" disabled>Load .ALL / .MDL</button>
+		<input id="allfile" type="file" accept=".ALL,.MDL" style="display:none">
+		<button id="loadanmbutton" onclick="anmfile.click()" disabled>Load .ANM</button>
+		<input id="anmfile" type="file" accept=".ANM" style="display:none">
+		</div>
 		<div>
 		<input type="radio" id="modecollision" name="mode" value="Collision" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(function(x){x.visible=false;}); blinecolor.visible=true; glinecolor.visible=true; colors.forEach(function(x){x.visible=true;});" disabled><label for="Textured">Collision</label>
 		<input type="radio" id="modetextured" name="mode" value="Textured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(function(x){x.visible=true; x.wireframe=false;x.map=texture;x.needsUpdate=true;}); blinecolor.visible=false; glinecolor.visible=false; colors.forEach(function(x){x.visible=false;}); setWireframe(model,false);selectedObj=null;" disabled><label for="Textured">Textured</label>
 		<input type="radio" id="modeuntextured" name="mode" value="Untextured" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(function(x){x.visible=true; x.wireframe=false;x.map=null;x.needsUpdate=true;}); blinecolor.visible=false; glinecolor.visible=false; colors.forEach(function(x){x.visible=false;}); setWireframe(model,false);selectedObj=null;" disabled><label for="Untextured">Untextured</label>
 		<input type="radio" id="modewireframe" name="mode" value="Wireframe" onchange="[materialtex,materialtexst,materialtexsta,materialtexsts,materialtexds,materialtexstds,materialtexstads,materialtexstsds].forEach(function(x){x.visible=true; x.wireframe=true;x.map=null;x.needsUpdate=true;}); blinecolor.visible=false; glinecolor.visible=false; colors.forEach(function(x){x.visible=false;}); setWireframe(model,false);selectedObj=null;" disabled><label for="Wireframe">Wireframe</label>
 		</div>
+		<div id="anmradios"></div>
 		<div style="bottom:0; font-family: monospace;">
 		W,A,S,D: move<br/>
 		&larr;,&uarr;,&rarr;,&darr;,Q,E: turn<br/>
@@ -34,16 +41,16 @@
 				urlvars[key] = value;
 			});
 			var games = {
-				"blsc": {"clut": addtopos(0x800E2518), "thumbsp": 0,"newgfxengine": true, "gfxpointerdist": 44, "colpointerdist": 0x34, "colpolysize":22, "getcolpolydata":getcolpolydatats2, "coliniarea": psxetopos(0xb69ec8)},
-				"ts2": {"clut": addtopos(0x800CD200), "thumbsp": 4,"newgfxengine": false, "gfxpointerdist": 108, "colpointerdist": 0x34, "colpolysize":22, "getcolpolydata":getcolpolydatats2, "coliniarea": psxetopos(0xb54bb0)},
-				"ts2demo": {"clut": addtopos(0x800BCCE0), "thumbsp": 4, "newgfxengine": false, "colpointerdist": 0x30, "colpolysize":22, "getcolpolydata":getcolpolydatats2, "coliniarea": psxetopos(0xb43b80)},
-				"ts2proto": {"clut": addtopos(0x800B58A8), "thumbsp": 4, "newgfxengine": false, "colpointerdist": 0x30, "colpolysize":22, "getcolpolydata":getcolpolydatats2, "coliniarea": psxetopos(0xb3c748)},
-				"bugs": {"clutpag": addtopos(0x800910B0), "clutpal": addtopos(0x800A7DD8), "thumbsp": 0, "newgfxengine": false, "gfxpointerdist": 84, "colpointerdist": 0x30, "colpolysize":16, "getcolpolydata":getcolpolydatabugs, "coliniarea": psxetopos(0xb334e8)},
-				"bugsdemo": {"clutpag": addtopos(0x80094740),"clutpal": addtopos(0x800a6be8), "thumbsp": 0, "newgfxengine": false, "colpointerdist": 0x34, "colpolysize":24, "getcolpolydata":getcolpolydatabugs, "coliniarea": psxetopos(0xb322f8)},
-				"rascal": {"newgfxengine": false, "colpointerdist": 0xC4, "colpolysize":44, "getcolpolydata": getcolpolydatarascal, "getcolmeshfromss":getcolmeshfromssrascal, "coliniarea": psxetopos(0xb4cd6c)},
-				"wl": {"clut": addtopos(0x800AAAB8), "thumbsp": 0, "newgfxengine": true, "gfxpointerdist": 44},
-				"tsr": {"clut": addtopos(0x800DA610), "thumbsp": 4, "newgfxengine": true, "gfxpointerdist": 112},
-				"mrm": {"clut": addtopos(0x800DFF00), "thumbsp": 4, "newgfxengine": false}
+				"blsc": {"clut": addtopos(0x800E2518), "thumbsp": 0,"newgfxengine": true, "newanmengine": true, "gfxpointerdist": 44, "colpointerdist": 0x34, "colpolysize":22, "getcolpolydata":getcolpolydatats2, "coliniarea": psxetopos(0xb69ec8)},
+				"ts2": {"clut": addtopos(0x800CD200), "thumbsp": 4,"newgfxengine": false, "newanmengine": true, "gfxpointerdist": 108, "colpointerdist": 0x34, "colpolysize":22, "getcolpolydata":getcolpolydatats2, "coliniarea": psxetopos(0xb54bb0)},
+				"ts2demo": {"clut": addtopos(0x800BCCE0), "thumbsp": 4, "newgfxengine": false, "newanmengine": false, "colpointerdist": 0x30, "colpolysize":22, "getcolpolydata":getcolpolydatats2, "coliniarea": psxetopos(0xb43b80)},
+				"ts2proto": {"clut": addtopos(0x800B58A8), "thumbsp": 4, "newgfxengine": false, "newanmengine": false, "colpointerdist": 0x30, "colpolysize":22, "getcolpolydata":getcolpolydatats2, "coliniarea": psxetopos(0xb3c748)},
+				"bugs": {"clutpag": addtopos(0x800910B0), "clutpal": addtopos(0x800A7DD8), "thumbsp": 0, "newgfxengine": false, "newanmengine": false, "gfxpointerdist": 84, "colpointerdist": 0x30, "colpolysize":16, "getcolpolydata":getcolpolydatabugs, "coliniarea": psxetopos(0xb334e8)},
+				"bugsdemo": {"clutpag": addtopos(0x80094740),"clutpal": addtopos(0x800a6be8), "thumbsp": 0, "newgfxengine": false, "newanmengine": false, "colpointerdist": 0x34, "colpolysize":24, "getcolpolydata":getcolpolydatabugs, "coliniarea": psxetopos(0xb322f8)},
+				"rascal": {"newgfxengine": false, "newanmengine": false, "colpointerdist": 0xC4, "colpolysize":44, "getcolpolydata": getcolpolydatarascal, "getcolmeshfromss":getcolmeshfromssrascal, "coliniarea": psxetopos(0xb4cd6c)},
+				"wl": {"clut": addtopos(0x800AAAB8), "thumbsp": 0, "newgfxengine": true, "newanmengine": true, "gfxpointerdist": 44},
+				"tsr": {"clut": addtopos(0x800DA610), "thumbsp": 4, "newgfxengine": true, "newanmengine": true, "gfxpointerdist": 112},
+				"mrm": {"clut": addtopos(0x800DFF00), "thumbsp": 4, "newgfxengine": false, "newanmengine": true}
 			};
 			
 			var mult=urlvars["mult"]||0.02;
@@ -97,6 +104,8 @@
 			var renderer = new THREE.WebGLRenderer({antialias: urlvars["antialias"]=="y"});
 			renderer.setSize( window.innerWidth, window.innerHeight );
 			document.body.appendChild( renderer.domElement );
+			
+			if (["rascal","bugs","bugsdemo"].indexOf(urlvars["game"])>=0) loadanmbutton.style.display="none";
 			
 			if (urlvars["file"]) {
 				var oReq = new XMLHttpRequest();
@@ -487,6 +496,93 @@
 				document.querySelector("input[name=mode]:not([disabled])").click();
 			}
 			
+			var anminterval=null;
+			
+			function cancelanm() {
+				if (anminterval!==null) clearInterval(anminterval); anminterval=null;
+				if (model) model.children.forEach(c=>{c.position.x=c.position.y=c.position.z=c.rotation.x=c.rotation.y=c.rotation.z=0; c.visible=true;});
+			}
+			
+			function selanm() {
+				cancelanm();
+				let mempos=this.value>>1, headers;
+				if (games[urlvars["game"]].newanmengine) {
+					headers={hfff0: array16u[mempos], h3: array16u[mempos+1], loopframes: array16u[mempos+2], bones1: array16u[mempos+3],
+							frameoffset: array16u[mempos+4], bones2: array16u[mempos+5], sizeflaghides: array16u[mempos+6], padding: array16u[mempos+7]};
+					if (headers.hfff0==0xfff2) return alert("You've tried to load an old-engine ANM on "+urlvars["game"]+" which uses new-engine ANM!");
+					if (headers.hfff0!=0xfff0 || headers.h3!=0x03 || headers.bones1!=headers.bones2) return alert("Corrupted ANM!");
+					mempos+=8;
+				} else {
+					headers={hfff2: array16u[mempos], loopframes: array16u[mempos+1], bones1: array16u[mempos+2],
+							frameoffset: array16u[mempos+3], bones2: array16u[mempos+4], sizeflaghides: array16u[mempos+5], padding: array16u[mempos+6]};
+					if (headers.hfff2==0xfff0) return alert("You've tried to load a new-engine ANM on "+urlvars["game"]+" which uses old-engine ANM!");
+					if (headers.hfff2!=0xfff2 || headers.bones1!=headers.bones2) return alert("Corrupted ANM!");
+					mempos+=7;
+				}
+				if (headers.bones1>model.children.length) return alert("Unsupported ANM for current model");
+				for (let i=headers.bones1; i<model.children.length; i++) model.children[i].visible=false;
+				const boneanims=[], frames=Array(headers.loopframes).fill().map(()=>[]);
+				for (let i=0;i<headers.bones1;i++) boneanims[i]=array16[mempos++]
+				for (let i=0;i<(headers.sizeflaghides>>1);i++) {
+					let flaghides=array16u[mempos++];
+					for (let j=0;j<16;j++) if (flaghides&(1<<j)) model.children[i*16+j].visible=false;
+				}
+				for (let i=0;i<headers.bones1;i++) {
+					if (boneanims[i]<0) {	// -3, -2
+						model.children[i].visible=false;
+						continue;
+					}
+					for (let fno=0; fno<headers.loopframes; fno++) {
+						let animframe=mempos+boneanims[i]+fno*headers.frameoffset;
+						if (games[urlvars["game"]].newanmengine) {
+							let rot = array16u[animframe+3]+(array16u[animframe+4]<<16);
+							frames[fno][i]={x: array16[animframe]/4, y: array16[animframe+1]/4, z: array16[animframe+2]/4,
+									rz: (rot&0x3FF)*Math.PI/512, ry: ((rot>>10)&0x3FF)*Math.PI/512, rx: ((rot>>20)&0x3FF)*Math.PI/512};
+						} else {
+							frames[fno][i]={x: array16[animframe], y: array16[animframe+1], z: array16[animframe+2],
+									rx: array16[animframe+3]*Math.PI/2048, ry: array16[animframe+4]*Math.PI/2048, rz: array16[animframe+5]*Math.PI/2048};
+						}
+					}
+				}
+				let f=0;
+				anminterval=setInterval(()=>{
+					model.children.forEach((x,i)=>{if (frames[f][i]) {
+						x.position.x=frames[f][i].x; x.position.y=frames[f][i].y; x.position.z=frames[f][i].z;
+						x.rotation.x=frames[f][i].rx; x.rotation.y=frames[f][i].ry; x.rotation.z=frames[f][i].rz;
+					}});
+					if (++f==headers.loopframes) f=0;
+				},50);
+			}
+			
+			function getanmfromss(mempos) {
+					let radio = document.createElement("input");
+					radio.type="radio"; radio.name="anmsel"; radio.value=""; radio.onchange=cancelanm; radio.style.filter="brightness(0.5)"; radio.checked=true;
+					anmradios.appendChild(radio);
+					let count = array16u[(mempos>>1)+1];
+					for (let i=0;i<count;i++) {
+						let add = array32u[(mempos>>2)+2+i]; 
+						let radio = document.createElement("input");
+						radio.type="radio"; radio.name="anmsel"; radio.value=addtopos(add); radio.onchange=selanm;
+						if (!add) radio.disabled=true;
+						anmradios.appendChild(radio);
+					}
+			}
+			
+			function getanmfromfile() {
+					anmradios.innerHTML="";
+					let radio = document.createElement("input");
+					radio.type="radio"; radio.name="anmsel"; radio.value=""; radio.onchange=cancelanm; radio.style.filter="brightness(0.5)"; radio.checked=true;
+					anmradios.appendChild(radio);
+					let count = array16u[1];
+					for (let i=0;i<count;i++) {
+						let pos = array32u[2+i];
+						let radio = document.createElement("input");
+						radio.type="radio"; radio.name="anmsel"; radio.value=pos; radio.onchange=selanm;
+						if (!pos) radio.disabled=true;
+						anmradios.appendChild(radio);
+					}
+			}
+			
 			function loaded() {
 				document.getElementById("progresscontainer").style.display="none";
 				window.addEventListener( 'resize', onWindowResize, false );
@@ -500,10 +596,14 @@
 				materialtexstsds=new THREE.MeshBasicMaterial({side: THREE.DoubleSide, map: texture, wireframe: false, transparent:true, vertexColors: THREE.FaceColors, opacity: 1, blending: THREE.SubtractiveBlending, depthWrite: false});
 				
 				if (urlvars["sscol"]=="y") getcolfromss(games[urlvars["game"]].coliniarea);
-				else if (urlvars["gfxpointer"]) getgfxfromss(psxetopos(parseInt(urlvars["gfxpointer"])),parseInt(urlvars["gfxsize"]));
+				else if (urlvars["gfxpointer"]) {
+					getgfxfromss(psxetopos(parseInt(urlvars["gfxpointer"])),parseInt(urlvars["gfxsize"]));
+					if (urlvars["anmpointer"]) getanmfromss(psxetopos(parseInt(urlvars["anmpointer"])));
+					loadanmbutton.disabled = false;
+				}
 				document.addEventListener('mousedown', onDocumentMouseDown, false);
 				
-				document.querySelector('input').addEventListener('change', function() {
+				allfile.addEventListener('change', function() {
 					var reader = new FileReader();
 					reader.onload = function() {
 						arrayBuffer = this.result;
@@ -512,11 +612,26 @@
 						array16u = new Uint16Array(arrayBuffer);
 						array32 = new Int32Array(arrayBuffer);
 						array32u = new Uint32Array(arrayBuffer);
+						cancelanm();
+						anmradios.innerHTML="";
 						getentfromfile();
+						loadanmbutton.disabled = false;
 					}
 					reader.readAsArrayBuffer(this.files[0]);
 				}, false);
-				document.getElementById("loadfilebutton").disabled = false;
+				loadfilebutton.disabled = false;
+				anmfile.addEventListener('change', function() {
+					var reader = new FileReader();
+					reader.onload = function() {
+						arrayBuffer = this.result;
+						array16 = new Int16Array(arrayBuffer);
+						array16u = new Uint16Array(arrayBuffer);
+						array32u = new Uint32Array(arrayBuffer.slice(0,4*(array16u[1]+2)));	//Not mult4 sizes
+						cancelanm();
+						getanmfromfile();
+					}
+					reader.readAsArrayBuffer(this.files[0]);
+				}, false);
 				
 				var controls = new THREE.FlyControls( camera, renderer.domElement );
 				var t=performance.now();
